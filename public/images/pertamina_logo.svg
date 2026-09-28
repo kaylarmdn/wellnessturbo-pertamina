@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 280" fill="none">
+  <!-- Red Shape (Top Right) -->
+  <path d="M152 26H264C271 26 276 33.5 272 39.5L241 85.5H134C127 85.5 122 78 126 72L146 33.5C147.5 29 149.5 26 H152Z" fill="#ED1C24"/>
+  <!-- Blue Shape (Bottom Left) -->
+  <path d="M101 98.5H170L89 212.5H23C16 212.5 11.5 204.5 15.5 198.5L89 98.5Z" fill="#0080C6"/>
+  <!-- Green Shape (Bottom Right) -->
+  <path d="M179 98.5H264C271 98.5 275.5 106 272 112L209 206.5C207 209.5 203 212.5 198 212.5H146L179 98.5Z" fill="#78B82A"/>
+  
+  <!-- Text PERTAMINA -->
+  <text x="150" y="260" font-family="'Plus Jakarta Sans', Arial, sans-serif" font-weight="900" font-size="34" fill="#1C1B1B" text-anchor="middle" letter-spacing="2">PERTAMINA</text>
+</svg>
