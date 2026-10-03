@@ -208,7 +208,7 @@ function AdminRewardPage() {
   };
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <div className="space-y-8 animate-fade-in w-full max-w-full min-w-0 overflow-x-hidden">
       {/* Header Title */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/80 pb-5">
         <div>
@@ -228,8 +228,8 @@ function AdminRewardPage() {
       </div>
 
       {/* Main Tabs Navigation */}
-      <Tabs defaultValue="claims" className="space-y-6">
-        <TabsList className="bg-white/80 border border-purple-100 p-1 rounded-2xl shadow-xs">
+      <Tabs defaultValue="claims" className="space-y-6 w-full max-w-full min-w-0">
+        <TabsList className="bg-white/80 border border-purple-100 p-1 rounded-2xl shadow-xs w-full max-w-full overflow-x-auto flex flex-wrap sm:flex-nowrap gap-1">
           <TabsTrigger value="claims" className="rounded-xl font-bold text-xs sm:text-sm">
             📋 Kelola Klaim Pekerja ({claims.length})
           </TabsTrigger>

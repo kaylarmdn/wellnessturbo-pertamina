@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  Gift,
   GraduationCap,
   Inbox,
   MessageSquare,
@@ -74,13 +75,6 @@ const QUICK = [
     desc: "Modul & Quiz berjenjang",
     icon: GraduationCap,
     tone: "bg-sky-500/10 text-sky-600 border border-sky-300/30",
-  },
-  {
-    to: "/health-talk",
-    title: "Health Talk",
-    desc: "Tonton video & tandai selesai",
-    icon: PlayCircle,
-    tone: "bg-cyan-500/10 text-cyan-600 border border-cyan-300/30",
   },
   {
     to: "/challenge",
@@ -400,21 +394,37 @@ function Beranda() {
           </h2>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 w-full min-w-0">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 w-full min-w-0">
           <Link
-            to="/health-talk"
-            className="group relative overflow-hidden rounded-3xl border border-cyan-200/80 bg-gradient-to-br from-cyan-500/10 via-sky-400/5 to-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:border-cyan-300 backdrop-blur-xl min-w-0"
+            to="/pembekalan"
+            className="group relative overflow-hidden rounded-3xl border border-sky-200/80 bg-gradient-to-br from-sky-500/10 via-indigo-400/5 to-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:border-sky-300 backdrop-blur-xl min-w-0"
           >
             <div className="flex items-center justify-between">
-              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-cyan-500/15 text-cyan-600 border border-cyan-300/40 shadow-xs transition-transform duration-300 group-hover:scale-110">
-                <PlayCircle className="h-6 w-6" />
+              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-sky-500/15 text-sky-600 border border-sky-300/40 shadow-xs transition-transform duration-300 group-hover:scale-110">
+                <GraduationCap className="h-6 w-6" />
               </div>
-              <span className="rounded-full bg-cyan-50 px-2.5 py-1 text-xs font-bold text-cyan-700 group-hover:bg-cyan-600 group-hover:text-white transition-colors">
-                Mulai →
+              <span className="rounded-full bg-sky-50 px-2.5 py-1 text-xs font-bold text-sky-700 group-hover:bg-sky-600 group-hover:text-white transition-colors">
+                Belajar →
               </span>
             </div>
-            <h3 className="mt-4 font-bold text-slate-900 text-base">Health Talk</h3>
-            <p className="mt-1 text-xs text-slate-600 font-medium">Tonton video edukasi & tandai selesai</p>
+            <h3 className="mt-4 font-bold text-slate-900 text-base">Pembekalan</h3>
+            <p className="mt-1 text-xs text-slate-600 font-medium">Modul & quiz berjenjang materi kesehatan</p>
+          </Link>
+
+          <Link
+            to="/challenge"
+            className="group relative overflow-hidden rounded-3xl border border-indigo-200/80 bg-gradient-to-br from-indigo-500/10 via-purple-400/5 to-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:border-indigo-300 backdrop-blur-xl min-w-0"
+          >
+            <div className="flex items-center justify-between">
+              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-indigo-500/15 text-indigo-600 border border-indigo-300/40 shadow-xs transition-transform duration-300 group-hover:scale-110">
+                <Target className="h-6 w-6" />
+              </div>
+              <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-700 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                Ikut →
+              </span>
+            </div>
+            <h3 className="mt-4 font-bold text-slate-900 text-base">Challenge</h3>
+            <p className="mt-1 text-xs text-slate-600 font-medium">Ikuti tantangan kesehatan mingguan & kumpulkan poin</p>
           </Link>
 
           <Link
@@ -434,19 +444,19 @@ function Beranda() {
           </Link>
 
           <Link
-            to="/leaderboard"
-            className="group relative overflow-hidden rounded-3xl border border-emerald-200/80 bg-gradient-to-br from-emerald-500/10 via-teal-400/5 to-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:border-emerald-300 backdrop-blur-xl min-w-0"
+            to="/reward"
+            className="group relative overflow-hidden rounded-3xl border border-amber-200/80 bg-gradient-to-br from-amber-500/10 via-orange-400/5 to-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:border-amber-300 backdrop-blur-xl min-w-0"
           >
             <div className="flex items-center justify-between">
-              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-emerald-500/15 text-emerald-600 border border-emerald-300/40 shadow-xs transition-transform duration-300 group-hover:scale-110">
-                <Activity className="h-6 w-6" />
+              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-amber-500/15 text-amber-600 border border-amber-300/40 shadow-xs transition-transform duration-300 group-hover:scale-110">
+                <Gift className="h-6 w-6" />
               </div>
-              <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
-                Ikut →
+              <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700 group-hover:bg-amber-600 group-hover:text-white transition-colors">
+                Tukar →
               </span>
             </div>
-            <h3 className="mt-4 font-bold text-slate-900 text-base">Challenge</h3>
-            <p className="mt-1 text-xs text-slate-600 font-medium">Ikuti tantangan kesehatan mingguan & kumpulkan poin</p>
+            <h3 className="mt-4 font-bold text-slate-900 text-base">Reward</h3>
+            <p className="mt-1 text-xs text-slate-600 font-medium">Tukarkan poin kesehatan Anda dengan hadiah menarik</p>
           </Link>
 
           <Link
@@ -467,59 +477,8 @@ function Beranda() {
         </div>
       </section>
 
-      {/* 4. CONTENT SECTIONS GRID - Health Talk & Leaderboard */}
-      <div className="grid gap-8 xl:grid-cols-2">
-        {/* Health Talk Media Cards */}
-        <section className="glass-panel rounded-[2rem] p-6 sm:p-7 border border-white/80 bg-white/70 shadow-lg backdrop-blur-xl">
-          <div className="mb-5 flex items-center justify-between gap-3 border-b border-indigo-50/80 pb-4">
-            <h2 className="flex min-w-0 items-center gap-2.5 text-lg font-black text-slate-900">
-              <div className="grid h-9 w-9 place-items-center rounded-2xl bg-cyan-500/15 text-cyan-600 border border-cyan-300/40 shadow-xs">
-                <PlayCircle className="h-5 w-5" />
-              </div>
-              <span className="truncate">Health Talk Terbaru</span>
-            </h2>
-            <Link to="/health-talk" className="shrink-0 text-xs font-bold text-indigo-600 hover:text-indigo-800 hover:underline">
-              Lihat Semua →
-            </Link>
-          </div>
-
-          <div className="space-y-3.5">
-            {(talks.data ?? []).slice(0, 4).map((talk) => {
-              const p = progress.data?.find((x) => x.health_talk_id === talk.id);
-              const st = talkStatus(p);
-              return (
-                <div
-                  key={talk.id}
-                  className="group grid grid-cols-[80px_minmax(0,1fr)_auto] items-center gap-3.5 rounded-2xl border border-indigo-100/70 bg-white/90 p-3 transition-all duration-200 hover:border-indigo-300 hover:shadow-md"
-                >
-                  <div className="relative overflow-hidden rounded-xl h-16 w-20">
-                    <img
-                      src={talk.thumbnail_url ?? "/images/cosmic_wellness_hero.jpg"}
-                      alt={talk.title}
-                      loading="lazy"
-                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
-                    />
-                    <div className="absolute inset-0 bg-slate-950/20 group-hover:bg-transparent transition-colors" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="truncate font-bold text-slate-900 text-sm leading-snug">{talk.title}</p>
-                    <div className="mt-1 flex items-center gap-2">
-                      <Badge variant="outline" className={`text-[10px] font-bold border-white/60 ${st.tone}`}>
-                        {st.label}
-                      </Badge>
-                      <span className="text-[11px] text-slate-500 font-medium">10 Min</span>
-                    </div>
-                  </div>
-                  <Button asChild size="sm" className={`rounded-full px-4 font-bold text-xs shadow-xs ${st.key === "selesai" ? "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200" : "bg-gradient-to-r from-sky-500 to-indigo-600 text-white hover:brightness-110 shadow-sky-500/20"}`}>
-                    <Link to="/health-talk/$id" params={{ id: talk.id }}>
-                      {st.key === "selesai" ? "Lihat" : "Mulai →"}
-                    </Link>
-                  </Button>
-                </div>
-              );
-            })}
-          </div>
-        </section>
+      {/* 4. CONTENT SECTIONS GRID - Leaderboard */}
+      <div className="grid gap-8">
 
         {/* Leaderboard Preview Card */}
         <section className="glass-panel rounded-[2rem] p-6 sm:p-7 border border-white/80 bg-white/70 shadow-lg backdrop-blur-xl">
@@ -726,97 +685,96 @@ function Beranda() {
 
       </section>
 
-      {/* Medical Event Popup Modal */}
+      {/* Sticky Medical Event Info Banner / Modal */}
       {popupEvent && !popupClosed && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/70 p-4 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="relative w-full max-w-md overflow-hidden rounded-3xl glass-card bg-white/90 shadow-2xl border border-white/80">
-            <button
-              type="button"
-              aria-label="Tutup"
-              onClick={() => {
-                sessionStorage.setItem("wt_event_popup", "1");
-                setPopupClosed(true);
-              }}
-              className="absolute top-3 right-3 z-10 grid h-8 w-8 place-items-center rounded-full bg-white/80 text-slate-700 shadow-md hover:bg-white transition-colors"
-            >
-              <X className="h-4 w-4" />
-            </button>
-
-            {popupEvent.banner_url && (
-              <div className="relative h-44 w-full overflow-hidden bg-slate-100">
-                <img
-                  src={popupEvent.banner_url}
-                  alt={popupEvent.title}
-                  className="h-full w-full object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-white/90 via-transparent to-transparent" />
-              </div>
-            )}
-
-            <div className="p-6">
-              <div className="flex items-center justify-between gap-2">
-                <Badge className="bg-rose-500 text-white font-semibold">
-                  <CalendarHeart className="mr-1 h-3.5 w-3.5" /> Medical Event
-                </Badge>
-                {eventList.length > 1 && (
-                  <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full">
-                    Iklan {popupIndex + 1} dari {eventList.length}
-                  </span>
-                )}
-              </div>
-
-              <h3 className="mt-3 text-xl font-bold text-slate-800 uppercase line-clamp-2">
-                {popupEvent.title}
-              </h3>
-              <p className="mt-2 text-sm text-slate-600 line-clamp-3">
-                {popupEvent.description}
-              </p>
-              <p className="mt-3 flex items-center gap-2 text-xs font-medium text-slate-700">
-                <CalendarDays className="h-3.5 w-3.5 text-sky-600" />
-                {formatDateRange(popupEvent.start_date, popupEvent.end_date)}
-              </p>
-
-              {eventList.length > 1 && (
-                <div className="mt-4 flex items-center justify-between border-t border-slate-200/60 pt-3">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setPopupIndex((prev) => (prev - 1 + eventList.length) % eventList.length)
-                    }
-                    className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-sky-600 transition-colors"
-                  >
-                    <ChevronLeft className="h-4 w-4" /> Sebelum
-                  </button>
-                  <div className="flex items-center gap-1.5">
-                    {eventList.map((_, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => setPopupIndex(idx)}
-                        className={`h-2 rounded-full transition-all ${
-                          idx === popupIndex % eventList.length
-                            ? "w-5 bg-sky-600"
-                            : "w-2 bg-slate-300 hover:bg-slate-400"
-                        }`}
-                        aria-label={`Ke event ${idx + 1}`}
-                      />
-                    ))}
+        <div className="sticky top-16 z-40 w-full mb-6 animate-in slide-in-from-top-4 duration-300 drop-shadow-xl">
+          <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl border border-indigo-200/90 bg-white/95 dark:bg-slate-900/95 p-4 sm:p-5 shadow-2xl backdrop-blur-2xl text-slate-900 dark:text-white glow-border">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              {/* Banner preview or icon */}
+              <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                {popupEvent.banner_url ? (
+                  <img
+                    src={popupEvent.banner_url}
+                    alt={popupEvent.title}
+                    className="h-14 w-20 sm:h-16 sm:w-28 shrink-0 rounded-xl object-cover border border-indigo-100 shadow-sm"
+                  />
+                ) : (
+                  <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-gradient-to-tr from-rose-500 to-indigo-600 text-white shadow-md">
+                    <CalendarHeart className="h-6 w-6" />
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setPopupIndex((prev) => (prev + 1) % eventList.length)}
-                    className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-sky-600 transition-colors"
-                  >
-                    Lanjut <ChevronRight className="h-4 w-4" />
-                  </button>
-                </div>
-              )}
+                )}
 
-              <Button asChild className="mt-5 w-full rounded-2xl bg-gradient-to-r from-sky-500 to-indigo-600 hover:brightness-110 font-bold text-white shadow-md">
-                <Link to="/event" onClick={() => setPopupClosed(true)}>
-                  Info Lebih Lanjut
-                </Link>
-              </Button>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge className="bg-rose-500 text-white font-bold text-[10px] px-2 py-0.5">
+                      <CalendarHeart className="mr-1 h-3 w-3" /> Info Medical Event
+                    </Badge>
+                    {eventList.length > 1 && (
+                      <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100 dark:bg-slate-800 dark:text-indigo-400">
+                        {popupIndex + 1} dari {eventList.length}
+                      </span>
+                    )}
+                    <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                      <CalendarDays className="h-3 w-3 text-sky-600" />
+                      {formatDateRange(popupEvent.start_date, popupEvent.end_date)}
+                    </span>
+                  </div>
+
+                  <h3 className="mt-1 text-sm sm:text-base font-bold text-slate-900 dark:text-white truncate">
+                    {popupEvent.title}
+                  </h3>
+                  <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-1 font-medium">
+                    {popupEvent.description}
+                  </p>
+                </div>
+              </div>
+
+              {/* Actions & Immediate Close Button */}
+              <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end border-t sm:border-t-0 pt-2 sm:pt-0 border-indigo-100 dark:border-slate-800">
+                {eventList.length > 1 && (
+                  <div className="flex items-center gap-1 mr-1">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setPopupIndex((prev) => (prev - 1 + eventList.length) % eventList.length)
+                      }
+                      className="grid h-7 w-7 place-items-center rounded-lg text-slate-600 hover:bg-indigo-50 dark:hover:bg-slate-800 transition-colors"
+                      title="Event Sebelumnya"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPopupIndex((prev) => (prev + 1) % eventList.length)}
+                      className="grid h-7 w-7 place-items-center rounded-lg text-slate-600 hover:bg-indigo-50 dark:hover:bg-slate-800 transition-colors"
+                      title="Event Selanjutnya"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
+
+                <Button asChild size="sm" className="rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 hover:brightness-110 font-bold text-white shadow-sm text-xs h-8">
+                  <Link to="/event" onClick={() => setPopupClosed(true)}>
+                    Detail Event <ChevronRight className="h-3.5 w-3.5 ml-1" />
+                  </Link>
+                </Button>
+
+                {/* Instant Close Button */}
+                <button
+                  type="button"
+                  aria-label="Tutup Info Modal"
+                  title="Tutup Info Modal"
+                  onClick={() => {
+                    sessionStorage.setItem("wt_event_popup", "1");
+                    setPopupClosed(true);
+                  }}
+                  className="flex items-center gap-1 text-xs font-bold text-slate-600 hover:text-rose-600 bg-slate-100 hover:bg-rose-50 dark:bg-slate-800 dark:hover:bg-rose-950/40 dark:text-slate-300 px-2.5 h-8 rounded-xl transition-all cursor-pointer border border-slate-200 dark:border-slate-700"
+                >
+                  <span>Tutup</span>
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
             </div>
           </div>
         </div>

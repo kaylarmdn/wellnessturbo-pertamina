@@ -503,22 +503,101 @@ export async function deletePembekalanQuizQuestion(id: string): Promise<void> {
   } catch { }
 }
 
+const INITIAL_PEMBEKALAN_PROGRESS: PembekalanProgress[] = [
+  {
+    id: "prog-demo-1",
+    user_id: "112233",
+    module_id: "pem-1",
+    video_progress_percentage: 100,
+    video_completed: true,
+    quiz_completed: true,
+    quiz_score: 100,
+    completed_at: "2026-09-28T10:15:00.000Z",
+    updated_at: "2026-09-28T10:15:00.000Z",
+  },
+  {
+    id: "prog-demo-2",
+    user_id: "223344",
+    module_id: "pem-1",
+    video_progress_percentage: 100,
+    video_completed: true,
+    quiz_completed: true,
+    quiz_score: 80,
+    completed_at: "2026-09-28T11:30:00.000Z",
+    updated_at: "2026-09-28T11:30:00.000Z",
+  },
+  {
+    id: "prog-demo-3",
+    user_id: "334455",
+    module_id: "pem-1",
+    video_progress_percentage: 65,
+    video_completed: false,
+    quiz_completed: false,
+    completed_at: null,
+    updated_at: "2026-09-29T08:20:00.000Z",
+  },
+  {
+    id: "prog-demo-4",
+    user_id: "445566",
+    module_id: "pem-1",
+    video_progress_percentage: 100,
+    video_completed: true,
+    quiz_completed: true,
+    quiz_score: 90,
+    completed_at: "2026-09-29T14:45:00.000Z",
+    updated_at: "2026-09-29T14:45:00.000Z",
+  },
+  {
+    id: "prog-demo-5",
+    user_id: "112233",
+    module_id: "pem-2",
+    video_progress_percentage: 100,
+    video_completed: true,
+    quiz_completed: true,
+    quiz_score: 100,
+    completed_at: "2026-09-29T16:00:00.000Z",
+    updated_at: "2026-09-29T16:00:00.000Z",
+  },
+  {
+    id: "prog-demo-6",
+    user_id: "223344",
+    module_id: "pem-2",
+    video_progress_percentage: 40,
+    video_completed: false,
+    quiz_completed: false,
+    completed_at: null,
+    updated_at: "2026-09-30T07:10:00.000Z",
+  },
+];
+
 export function getStoredPembekalanProgressList(): PembekalanProgress[] {
   try {
     const raw = localStorage.getItem(STORAGE_PEMBEKALAN_PROGRESS_KEY);
-    return raw ? JSON.parse(raw) : [];
+    if (!raw) {
+      localStorage.setItem(STORAGE_PEMBEKALAN_PROGRESS_KEY, JSON.stringify(INITIAL_PEMBEKALAN_PROGRESS));
+      return INITIAL_PEMBEKALAN_PROGRESS;
+    }
+    return JSON.parse(raw);
   } catch {
-    return [];
+    return INITIAL_PEMBEKALAN_PROGRESS;
   }
 }
 
-export async function listPembekalanProgress(userId: string): Promise<PembekalanProgress[]> {
+export async function listPembekalanProgress(userId?: string): Promise<PembekalanProgress[]> {
   try {
-    const { data, error } = await supabase.from("pembekalan_progress").select("*").eq("user_id", userId);
-    if (!error && data) return data as PembekalanProgress[];
+    let query = supabase.from("pembekalan_progress").select("*");
+    if (userId) {
+      query = query.eq("user_id", userId);
+    }
+    const { data, error } = await query;
+    if (!error && data && data.length > 0) return data as PembekalanProgress[];
   } catch { }
 
-  return getStoredPembekalanProgressList().filter((p) => p.user_id === userId);
+  const stored = getStoredPembekalanProgressList();
+  if (userId) {
+    return stored.filter((p) => p.user_id === userId);
+  }
+  return stored;
 }
 
 export async function getPembekalanProgress(userId: string, moduleId: string): Promise<PembekalanProgress | null> {
@@ -898,6 +977,67 @@ export function parseCsv(text: string): string[][] {
   return result;
 }
 
+export const TAB_CANDIDATES = {
+  NOVER: [
+    "JENIS KELAMIN-TUBO NOVER",
+    "JENIS KELAMIN-TURBO NOVER",
+    "JENIS KELAMIN TURBO-NOVER",
+    "JENIS KELAMIN TUBO-NOVER",
+    "TUBO NOVER",
+    "TURBO NOVER",
+    "NOVER188",
+    "NOVER 188",
+  ],
+  UNDER: [
+    "JENIS KELAMIN-TURBO UNDER",
+    "JENIS KELAMIN-TUBO UNDER",
+    "JENIS KELAMIN TURBO-UNDER",
+    "JENIS KELAMIN TUBO-UNDER",
+    "TURBO UNDER",
+    "TUBO UNDER",
+    "UNDER12",
+    "UNDER 12",
+  ],
+  RESET: ["RESET TURBO", "RESET TUBO", "RESET"],
+  DAILY: ["POIN DAILY", "DAILY", "KONSISTENSI DAILY"],
+  BFA: ["POIN BFA", "BFA"],
+  TURBO_RACE: ["TURBO RACE", "TUBO RACE", "TURBO", "TUBO"],
+};
+
+export function parseGenderValue(val: string | undefined): string | undefined {
+  if (!val) return undefined;
+  const s = val.trim().toUpperCase();
+  if (s === "L" || s.startsWith("LAKI") || s.includes("PRIA") || s.includes("MALE")) {
+    return "Laki-laki";
+  }
+  if (s === "P" || s.startsWith("PEREMPUAN") || s.includes("WANITA") || s.includes("FEMALE")) {
+    return "Perempuan";
+  }
+  return undefined;
+}
+
+export async function fetchCsvWithTabCandidates(
+  sheetUrl: string,
+  candidates: string[]
+): Promise<{ text: string; tabName: string } | null> {
+  for (const tabName of candidates) {
+    const csvUrl = formatGoogleSheetCsvUrl(sheetUrl, tabName);
+    if (!csvUrl) continue;
+    try {
+      const res = await fetch(csvUrl);
+      if (res.ok) {
+        const text = await res.text();
+        if (text && text.trim().length > 0 && !text.toLowerCase().includes("<!doctype html>")) {
+          return { text, tabName };
+        }
+      }
+    } catch {
+      // ignore and try next candidate
+    }
+  }
+  return null;
+}
+
 export type SpreadsheetUserRow = {
   username: string;
   password: string;
@@ -1051,16 +1191,8 @@ export async function fetchUserMetadataMap(sheetUrl: string): Promise<{
     return { byName: cached.byName, byUsername: cached.byUsername };
   }
 
-  const csvUrl = formatGoogleSheetCsvUrl(sheetUrl, "USER");
-  if (!csvUrl) return { byName, byUsername };
-
-  try {
-    const res = await fetch(csvUrl);
-    if (!res.ok) return { byName, byUsername };
-
-    const text = await res.text();
-    const parsedRows = parseCsv(text);
-    if (parsedRows.length <= 1) return { byName, byUsername };
+  const processRowsForMetadata = (parsedRows: string[][], defaultGenderForTab?: string) => {
+    if (!parsedRows || parsedRows.length <= 1) return;
 
     let headerRowIdx = 0;
     for (let r = 0; r < Math.min(5, parsedRows.length); r++) {
@@ -1070,7 +1202,8 @@ export async function fetchUserMetadataMap(sheetUrl: string): Promise<{
         rowStr.includes("lokasi") ||
         rowStr.includes("fungsi") ||
         rowStr.includes("username") ||
-        rowStr.includes("pekerja")
+        rowStr.includes("pekerja") ||
+        rowStr.includes("kelamin")
       ) {
         headerRowIdx = r;
         break;
@@ -1080,12 +1213,32 @@ export async function fetchUserMetadataMap(sheetUrl: string): Promise<{
     const headerRow = parsedRows[headerRowIdx] || parsedRows[0] || [];
     const headers = headerRow.map((h) => h.toLowerCase().trim());
 
-    let usernameIdx = headers.findIndex((h) => h.includes("username") || h.includes("nip") || h.includes("nik") || h.includes("nomor pekerja") || h.includes("no pekerja") || h.includes("no. pekerja"));
-    let nameIdx = headers.findIndex((h) => (h.includes("nama") || h === "name" || h.includes("nama pekerja")) && !h.includes("nomor") && !h.includes("no"));
-    let locIdx = headers.findIndex((h) => h.includes("lokasi") || h.includes("location") || h.includes("unit") || h.includes("plant") || h.includes("site"));
-    let funcIdx = headers.findIndex((h) => h.includes("fungsi") || h.includes("function") || h.includes("jabatan") || h.includes("dept") || h.includes("department"));
-    let genderIdx = headers.findIndex((h) => h.includes("jenis kelamin") || h.includes("kelamin") || h.includes("gender") || h.includes("jk"));
+    let usernameIdx = headers.findIndex(
+      (h) =>
+        h.includes("username") ||
+        h.includes("nip") ||
+        h.includes("nik") ||
+        h.includes("nomor pekerja") ||
+        h.includes("no pekerja") ||
+        h.includes("no. pekerja") ||
+        h.includes("nopek")
+    );
+    let nameIdx = headers.findIndex(
+      (h) => (h.includes("nama") || h === "name" || h.includes("nama pekerja")) && !h.includes("nomor") && !h.includes("no")
+    );
+    let locIdx = headers.findIndex(
+      (h) => h.includes("lokasi") || h.includes("location") || h.includes("unit") || h.includes("plant") || h.includes("site")
+    );
+    let funcIdx = headers.findIndex(
+      (h) => h.includes("fungsi") || h.includes("function") || h.includes("jabatan") || h.includes("dept") || h.includes("department")
+    );
+    let genderIdx = headers.findIndex(
+      (h) => h.includes("jenis kelamin") || h.includes("kelamin") || h.includes("gender") || h.includes("jk") || h.includes("l/p")
+    );
 
+    if (nameIdx === -1) {
+      nameIdx = headers.findIndex((h) => h.includes("pekerja") && !h.includes("nomor") && !h.includes("no"));
+    }
     if (nameIdx === -1) nameIdx = 1;
     if (usernameIdx === -1) usernameIdx = 0;
 
@@ -1093,35 +1246,74 @@ export async function fetchUserMetadataMap(sheetUrl: string): Promise<{
       const cols = parsedRows[i];
       if (!cols || cols.length === 0) continue;
 
-      const rawName = cols[nameIdx] ?? cols[2] ?? cols[1] ?? "";
+      const rawName = cols[nameIdx] ?? cols[1] ?? cols[0] ?? "";
       if (!isValidParticipantName(rawName)) continue;
       const name = rawName.trim();
       const username = (usernameIdx !== -1 ? cols[usernameIdx] : cols[0])?.trim() || "";
       const location = (locIdx !== -1 && cols[locIdx]?.trim()) ? cols[locIdx].trim() : "";
       const func = (funcIdx !== -1 && cols[funcIdx]?.trim()) ? cols[funcIdx].trim() : "";
-      const genderRaw = (genderIdx !== -1 && cols[genderIdx]?.trim()) ? cols[genderIdx].trim() : "";
 
-      let gender: string | undefined = undefined;
-      const gUpper = genderRaw.toUpperCase();
-      if (gUpper === "L" || gUpper.startsWith("LAKI") || gUpper.includes("PRIA")) gender = "Laki-laki";
-      else if (gUpper === "P" || gUpper.startsWith("PEREMPUAN") || gUpper.includes("WANITA")) gender = "Perempuan";
-
-      const meta: UserMetadata = {
-        name,
-        username,
-        location: location || "-",
-        function: func || "-",
-        gender,
-      };
+      let explicitGender: string | undefined = undefined;
+      if (genderIdx !== -1 && cols[genderIdx]) {
+        explicitGender = parseGenderValue(cols[genderIdx]);
+      }
+      // Specifically check Column C (index 2) for "L" or "P"
+      if (!explicitGender && cols.length >= 3 && cols[2]) {
+        explicitGender = parseGenderValue(cols[2]);
+      }
+      // Scan row cells for exact "L" or "P"
+      if (!explicitGender) {
+        for (let c = 0; c < cols.length; c++) {
+          if (c === nameIdx || c === locIdx || c === funcIdx || c === usernameIdx) continue;
+          const parsedG = parseGenderValue(cols[c]);
+          if (parsedG) {
+            explicitGender = parsedG;
+            break;
+          }
+        }
+      }
 
       const cName = cleanKey(name);
       const eName = name.toLowerCase();
+
+      const existing = byName.get(cName) || byName.get(eName) || (username ? (byUsername.get(username.toLowerCase()) || byUsername.get(cleanKey(username))) : undefined);
+
+      const finalGender = explicitGender || existing?.gender || defaultGenderForTab;
+
+      const meta: UserMetadata = {
+        name,
+        username: username || existing?.username || "",
+        location: (location && location !== "-") ? location : (existing?.location || "-"),
+        function: (func && func !== "-") ? func : (existing?.function || "-"),
+        gender: finalGender,
+      };
+
       byName.set(cName, meta);
       byName.set(eName, meta);
       if (username) {
         byUsername.set(username.toLowerCase(), meta);
         byUsername.set(cleanKey(username), meta);
       }
+    }
+  };
+
+  try {
+    // 1. Check USER tab
+    const userRes = await fetchCsvWithTabCandidates(sheetUrl, ["USER"]);
+    if (userRes) {
+      processRowsForMetadata(parseCsv(userRes.text));
+    }
+
+    // 2. Check JENIS KELAMIN-TUBO NOVER tab candidates
+    const noverRes = await fetchCsvWithTabCandidates(sheetUrl, TAB_CANDIDATES.NOVER);
+    if (noverRes) {
+      processRowsForMetadata(parseCsv(noverRes.text), "Laki-laki");
+    }
+
+    // 3. Check JENIS KELAMIN-TURBO UNDER tab candidates
+    const underRes = await fetchCsvWithTabCandidates(sheetUrl, TAB_CANDIDATES.UNDER);
+    if (underRes) {
+      processRowsForMetadata(parseCsv(underRes.text), "Perempuan");
     }
 
     userMetaCache.set(sheetUrl, { byName, byUsername, timestamp: Date.now() });
@@ -1331,49 +1523,63 @@ export async function fetchSpreadsheetLeaderboard(
   let sheetName: string | undefined = undefined;
   const catLower = category ? category.toLowerCase() : "";
 
+  let fetchedRes: { text: string; tabName: string } | null = null;
+
   if (category) {
     if (catLower.includes("group") || catLower.includes("tim")) {
       return fetchGroupLeaderboardFromSheets(sheetUrl);
     } else if (catLower.includes("daily") || catLower.includes("konsistensi") || catLower.includes("poin daily")) {
+      fetchedRes = await fetchCsvWithTabCandidates(sheetUrl, TAB_CANDIDATES.DAILY);
       sheetName = "POIN DAILY";
     } else if (catLower.includes("bfa")) {
+      fetchedRes = await fetchCsvWithTabCandidates(sheetUrl, TAB_CANDIDATES.BFA);
       sheetName = "POIN BFA";
     } else if (catLower.includes("nover") || catLower.includes("normal")) {
+      fetchedRes = await fetchCsvWithTabCandidates(sheetUrl, TAB_CANDIDATES.NOVER);
       sheetName = "JENIS KELAMIN TURBO-NOVER";
     } else if (catLower.includes("under")) {
+      fetchedRes = await fetchCsvWithTabCandidates(sheetUrl, TAB_CANDIDATES.UNDER);
       sheetName = "JENIS KELAMIN TURBO-UNDER";
     } else if (catLower.includes("race") || catLower.includes("individu") || catLower.includes("turbo")) {
+      fetchedRes = await fetchCsvWithTabCandidates(sheetUrl, TAB_CANDIDATES.TURBO_RACE);
       sheetName = "TURBO RACE";
     } else if (catLower.includes("executive")) {
+      fetchedRes = await fetchCsvWithTabCandidates(sheetUrl, ["EXECUTIVE TURBO", "EXECUTIVE"]);
       sheetName = "EXECUTIVE TURBO";
     } else if (catLower.includes("reset")) {
+      fetchedRes = await fetchCsvWithTabCandidates(sheetUrl, TAB_CANDIDATES.RESET);
       sheetName = "RESET TURBO";
     } else {
+      fetchedRes = await fetchCsvWithTabCandidates(sheetUrl, [category]);
       sheetName = category;
     }
   }
 
-  const csvUrl = formatGoogleSheetCsvUrl(sheetUrl, sheetName);
-  if (!csvUrl) return [];
-
-  let res = await fetch(csvUrl);
-  // Fallbacks for renamed or alternative sheet tab names
-  if (!res.ok) {
-    if (sheetName === "JENIS KELAMIN TURBO-NOVER" || catLower.includes("nover")) {
-      const fallbackUrl = formatGoogleSheetCsvUrl(sheetUrl, "NOVER188");
-      res = await fetch(fallbackUrl);
-    } else if (sheetName === "JENIS KELAMIN TURBO-UNDER" || catLower.includes("under")) {
-      const fallbackUrl = formatGoogleSheetCsvUrl(sheetUrl, "UNDER12");
-      res = await fetch(fallbackUrl);
-    } else if (sheetName === "RESET TURBO") {
-      const fallbackUrl = formatGoogleSheetCsvUrl(sheetUrl, "RESET TUBO");
-      res = await fetch(fallbackUrl);
+  let text = "";
+  if (fetchedRes) {
+    text = fetchedRes.text;
+  } else {
+    const csvUrl = formatGoogleSheetCsvUrl(sheetUrl, sheetName);
+    if (!csvUrl) return [];
+    const res = await fetch(csvUrl);
+    if (!res.ok) {
+      if (sheetName === "JENIS KELAMIN TURBO-NOVER" || catLower.includes("nover")) {
+        const fall = await fetchCsvWithTabCandidates(sheetUrl, TAB_CANDIDATES.NOVER);
+        if (fall) text = fall.text;
+      } else if (sheetName === "JENIS KELAMIN TURBO-UNDER" || catLower.includes("under")) {
+        const fall = await fetchCsvWithTabCandidates(sheetUrl, TAB_CANDIDATES.UNDER);
+        if (fall) text = fall.text;
+      } else if (sheetName === "RESET TURBO") {
+        const fall = await fetchCsvWithTabCandidates(sheetUrl, TAB_CANDIDATES.RESET);
+        if (fall) text = fall.text;
+      }
+    } else {
+      text = await res.text();
     }
   }
 
-  if (!res.ok) throw new Error("Gagal mengambil data dari Google Spreadsheet.");
+  if (!text) throw new Error("Gagal mengambil data dari Google Spreadsheet.");
 
-  const text = await res.text();
   const parsedRows = parseCsv(text);
   if (parsedRows.length <= 1) return [];
 
@@ -1470,7 +1676,9 @@ export async function fetchSpreadsheetLeaderboard(
       let location = (cols[2] && cols[2].trim()) ? cols[2].trim() : (locIdx !== -1 ? (cols[locIdx] ?? "-") : "-");
       let func = funcIdx !== -1 ? (cols[funcIdx] ?? "-") : "-";
 
-      const userMeta = userMetaMap.byName.get(cleanKey(name)) || userMetaMap.byName.get(name.toLowerCase());
+      const userMeta = userMetaMap.byName.get(cleanKey(name)) ||
+                       userMetaMap.byName.get(name.toLowerCase()) ||
+                       (nopek ? (userMetaMap.byUsername.get(nopek.toLowerCase()) || userMetaMap.byUsername.get(cleanKey(nopek))) : undefined);
       if (userMeta) {
         if (userMeta.location && userMeta.location !== "-") location = userMeta.location;
         if (userMeta.function && userMeta.function !== "-") func = userMeta.function;
@@ -1505,6 +1713,7 @@ export async function fetchSpreadsheetLeaderboard(
         rank: 0,
         nopek,
         employee_number: nopek,
+        gender: userMeta?.gender,
         category: "POIN BFA",
       });
     }
@@ -1542,7 +1751,9 @@ export async function fetchSpreadsheetLeaderboard(
       let func = funcIdx !== -1 ? (cols[funcIdx] ?? "-") : "-";
       let nopek = (nopekIdx !== -1 && cols[nopekIdx]) ? cols[nopekIdx].trim() : "";
 
-      const userMeta = userMetaMap.byName.get(cleanKey(name)) || userMetaMap.byName.get(name.toLowerCase());
+      const userMeta = userMetaMap.byName.get(cleanKey(name)) ||
+                       userMetaMap.byName.get(name.toLowerCase()) ||
+                       (nopek ? (userMetaMap.byUsername.get(nopek.toLowerCase()) || userMetaMap.byUsername.get(cleanKey(nopek))) : undefined);
       if (userMeta) {
         if (userMeta.location && userMeta.location !== "-") location = userMeta.location;
         if (userMeta.function && userMeta.function !== "-") func = userMeta.function;
@@ -1576,6 +1787,7 @@ export async function fetchSpreadsheetLeaderboard(
           rank: 0,
           nopek,
           employee_number: nopek,
+          gender: userMeta?.gender,
           bulan1: p1,
           bulan2: p2,
           bulan3: p3,
@@ -1659,6 +1871,17 @@ export async function fetchSpreadsheetLeaderboard(
           break;
         }
       }
+    }
+
+    // Resolve location, function, and gender from userMetaMap (loaded from JENIS KELAMIN NOVER / UNDER / USER sheets)
+    const userMeta = userMetaMap.byName.get(cleanKey(name)) ||
+                     userMetaMap.byName.get(name.toLowerCase()) ||
+                     (nopek ? (userMetaMap.byUsername.get(nopek.toLowerCase()) || userMetaMap.byUsername.get(cleanKey(nopek))) : undefined);
+
+    if (userMeta) {
+      if (userMeta.location && userMeta.location !== "-") location = userMeta.location;
+      if (userMeta.function && userMeta.function !== "-") func = userMeta.function;
+      if ((!gender || gender === "-") && userMeta.gender) gender = userMeta.gender;
     }
 
     // Indonesian Name Gender Inference fallback if gender is still missing
@@ -1976,12 +2199,10 @@ export async function fetchAdminLeaderboardAll(sheetUrl: string): Promise<Leader
 
   // 1. Extract points strictly from Column P (index 15) starting from row 2 (i=1) in "TURBO RACE" sheet tab
   try {
-    const turboCsvUrl = formatGoogleSheetCsvUrl(sheetUrl, "TURBO RACE");
-    if (turboCsvUrl) {
-      const res = await fetch(turboCsvUrl);
-      if (res.ok) {
-        const text = await res.text();
-        const parsed = parseCsv(text);
+    const turboRes = await fetchCsvWithTabCandidates(sheetUrl, TAB_CANDIDATES.TURBO_RACE);
+    if (turboRes) {
+      const text = turboRes.text;
+      const parsed = parseCsv(text);
         if (parsed.length > 1 && parsed[0]) {
           const headerRow = parsed[0];
           const headers = headerRow.map((h) => h.toLowerCase().trim());
@@ -2041,7 +2262,6 @@ export async function fetchAdminLeaderboardAll(sheetUrl: string): Promise<Leader
             }
           }
         }
-      }
     }
   } catch (e) {
     console.warn("TURBO RACE points extraction error:", e);
@@ -2647,9 +2867,10 @@ export function markAllNotificationsAsRead(userId?: string): void {
 export function generateAutomatedNotifications(
   user: AppUser | null,
   events: MedicalEvent[],
-  healthTalks: HealthTalk[],
-  claims: RewardClaim[],
+  claimsOrTalks: any,
+  claimsParam?: RewardClaim[],
 ): void {
+  const claims: RewardClaim[] = Array.isArray(claimsParam) ? claimsParam : (Array.isArray(claimsOrTalks) ? claimsOrTalks : []);
   const today = new Date();
 
   // 2. Event Medical H-2 Expiring Soon warnings

@@ -30,7 +30,6 @@ import {
 const NAV = [
   { to: "/beranda", label: "Beranda", icon: Home, badge: null },
   { to: "/pembekalan", label: "Pembekalan", icon: GraduationCap, badge: null },
-  { to: "/health-talk", label: "Health Talk", icon: PlayCircle, badge: null },
   { to: "/challenge", label: "Program Challenge", icon: Target, badge: null },
   { to: "/leaderboard", label: "Leaderboard", icon: Trophy, badge: null },
   { to: "/reward", label: "Reward", icon: Gift, badge: null },
@@ -109,16 +108,6 @@ export function AppShell({ children }: { children: ReactNode }) {
             ))}
           </nav>
         </div>
-
-        <div className="mt-auto pt-4 border-t border-indigo-100/60">
-          <Link
-            to="/admin"
-            className="flex items-center gap-3 rounded-2xl px-3.5 py-2.5 text-sm font-semibold text-slate-600 transition-all hover:bg-purple-50 hover:text-purple-900 dark:hover:bg-slate-800"
-          >
-            <ShieldCheck className="h-4.5 w-4.5 shrink-0 text-purple-500" />
-            Medical Admin
-          </Link>
-        </div>
       </aside>
 
       {/* Mobile Drawer Sidebar */}
@@ -161,22 +150,6 @@ export function AppShell({ children }: { children: ReactNode }) {
                   )}
                 </Link>
               ))}
-
-              <div className="my-2 border-t border-indigo-100/60 dark:border-slate-800" />
-
-              <Link
-                to="/admin"
-                onClick={() => setMobileOpen(false)}
-                className={cn(
-                  "flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-all",
-                  isActive("/admin")
-                    ? "bg-purple-600 text-white"
-                    : "text-purple-700 hover:bg-purple-50 dark:text-purple-400 dark:hover:bg-slate-800",
-                )}
-              >
-                <ShieldCheck className="h-4.5 w-4.5 shrink-0 text-purple-500" />
-                <span>Medical Admin</span>
-              </Link>
             </nav>
 
             {/* User Details & Logout inside Mobile Sidebar Drawer */}
@@ -213,8 +186,8 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       {/* Main Content Area next to Fixed Full-Height Sidebar */}
       <div className="relative z-10 min-h-screen w-full lg:pl-64 flex flex-col">
-        {/* Header */}
-        <header className="sticky top-0 z-30 border-b border-indigo-100/60 bg-white/75 backdrop-blur-xl dark:bg-slate-900/80 dark:border-slate-800">
+        {/* Frozen / Fixed Top Header */}
+        <header className="fixed top-0 left-0 right-0 z-50 lg:left-64 border-b border-indigo-100/80 bg-white/95 backdrop-blur-2xl shadow-sm dark:bg-slate-900/95 dark:border-slate-800">
           <div className="mx-auto flex max-w-[1400px] items-center justify-between gap-3 px-4 py-3 sm:px-6">
             <div className="flex min-w-0 items-center gap-3">
               {/* Mobile Sidebar Hamburger Button */}
@@ -263,7 +236,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        <main className="mx-auto w-full max-w-[1400px] min-w-0 flex-1 px-4 sm:px-8 pt-6 pb-10 overflow-x-hidden">
+        <main className="mx-auto w-full max-w-[1400px] min-w-0 flex-1 px-4 sm:px-8 pt-20 sm:pt-20 pb-10 overflow-x-hidden">
           <div key={pathname} className="animate-page-enter">
             {children}
           </div>

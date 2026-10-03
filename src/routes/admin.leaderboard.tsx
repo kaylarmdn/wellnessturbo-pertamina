@@ -330,15 +330,15 @@ function AdminLeaderboardPage() {
       )}
 
       {/* Leaderboard Table */}
-      <div className="rounded-3xl border border-border bg-card shadow-sm overflow-hidden">
+      <div className="rounded-3xl border border-border bg-card shadow-sm overflow-hidden w-full max-w-full min-w-0">
         <div className="p-4 border-b border-border flex items-center justify-between">
           <h3 className="font-bold text-sm text-primary-deep flex items-center gap-2">
             <Users className="h-4 w-4 text-primary" /> Daftar Rangking Pekerja ({rankedBoard.length})
           </h3>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+        <div className="w-full overflow-x-auto">
+          <table className="w-full min-w-[700px] text-left text-sm">
             <thead className="bg-slate-50 text-[11px] font-bold text-muted-foreground uppercase border-b border-border">
               <tr>
                 <th className="px-4 py-3 text-center w-16">Rank</th>

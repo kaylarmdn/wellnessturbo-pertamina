@@ -32,15 +32,14 @@ export const Route = createFileRoute("/admin")({
 });
 
 export const ADMIN_NAV = [
-  { to: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { to: "/admin/peserta", label: "Peserta", icon: Users },
+  { to: "/admin", label: "Dashboard Admin", icon: LayoutDashboard, exact: true },
+  { to: "/admin/reports", label: "📊 Laporan Pembekalan", icon: FileBarChart },
   { to: "/admin/pembekalan", label: "Kelola Pembekalan", icon: GraduationCap },
-  { to: "/admin/health-talk", label: "Health Talk", icon: Video },
+  { to: "/admin/peserta", label: "Data Peserta", icon: Users },
   { to: "/admin/challenge", label: "Kelola Challenge", icon: Target },
   { to: "/admin/reward", label: "Kelola Reward", icon: Gift },
   { to: "/admin/event", label: "Event / Banner", icon: CalendarHeart },
   { to: "/admin/leaderboard", label: "Leaderboard Spreadsheet", icon: Trophy },
-  { to: "/admin/reports", label: "Health Talk Reports", icon: FileBarChart },
   { to: "/admin/feedback", label: "Feedback Pekerja", icon: MessageSquare },
   { to: "/admin/settings", label: "Settings", icon: Settings },
 ] as const;
@@ -90,7 +89,7 @@ function AdminLayout() {
 
   return (
     <RequireAdmin>
-      <div className="relative min-h-screen w-full bg-transparent">
+      <div className="relative min-h-screen w-full max-w-full overflow-x-hidden bg-transparent">
         {/* Fixed Full-Height Desktop Admin Sidebar */}
         <aside className="fixed inset-y-0 left-0 top-0 bottom-0 z-40 hidden h-screen min-h-screen w-64 flex-col justify-between overflow-y-auto border-r border-white/60 bg-white/85 backdrop-blur-2xl p-5 lg:flex shadow-md">
           <div className="pt-1">
@@ -118,9 +117,9 @@ function AdminLayout() {
           </div>
         </aside>
 
-        <div className="relative z-10 min-w-0 min-h-screen w-full lg:pl-64 flex flex-col">
-          {/* Universal Admin Top Header with Logout Button */}
-          <header className="sticky top-0 z-30 flex items-center justify-between border-b border-white/60 bg-white/80 backdrop-blur-xl px-4 py-3 sm:px-6 shadow-xs">
+        <div className="relative z-10 min-w-0 min-h-screen w-full max-w-full overflow-x-hidden lg:pl-64 flex flex-col">
+          {/* Frozen / Fixed Top Admin Header */}
+          <header className="fixed top-0 left-0 right-0 z-50 lg:left-64 flex items-center justify-between border-b border-white/80 bg-white/95 backdrop-blur-2xl px-4 py-3 sm:px-6 shadow-sm">
             <div className="flex items-center gap-3 min-w-0">
               <Sheet open={open} onOpenChange={setOpen}>
                 <SheetTrigger asChild>
@@ -175,7 +174,7 @@ function AdminLayout() {
             </div>
           </header>
 
-          <main className="flex-1 p-6 sm:p-8">
+          <main className="flex-1 min-w-0 w-full max-w-full overflow-x-hidden p-4 sm:p-6 lg:p-8 pt-20 sm:pt-20">
             <Outlet />
           </main>
         </div>

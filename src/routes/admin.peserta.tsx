@@ -189,16 +189,16 @@ function AdminPesertaPage() {
       </div>
 
       {/* Table Peserta */}
-      <div className="overflow-hidden rounded-3xl border border-border bg-card shadow-sm">
-        <table className="w-full text-sm">
+      <div className="w-full max-w-full min-w-0 overflow-x-auto rounded-3xl border border-border bg-card shadow-sm">
+        <table className="w-full min-w-[700px] text-sm">
           <thead className="bg-slate-50 text-[11px] font-bold text-muted-foreground uppercase border-b border-border">
             <tr>
               <th className="px-4 py-3 text-left w-12">No</th>
-              <th className="px-4 py-3 text-left">Nama Lengkap</th>
-              <th className="px-4 py-3 text-left">No. Pekerja / Role</th>
-              <th className="px-4 py-3 text-center">Jenis Kelamin</th>
-              <th className="px-4 py-3 text-left">Lokasi & Fungsi</th>
-              <th className="px-4 py-3 text-right">Poin Turbo Race</th>
+              <th className="px-4 py-3 text-left min-w-[180px]">Nama Lengkap</th>
+              <th className="px-4 py-3 text-left min-w-[150px]">No. Pekerja / Role</th>
+              <th className="px-4 py-3 text-center min-w-[120px]">Jenis Kelamin</th>
+              <th className="px-4 py-3 text-left min-w-[150px]">Lokasi & Fungsi</th>
+              <th className="px-4 py-3 text-right min-w-[110px]">Poin Turbo Race</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">

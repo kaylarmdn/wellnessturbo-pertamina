@@ -51,22 +51,31 @@ function WorkerRewardPage() {
     enabled: !!sheetUrl,
   });
 
+  // Find user row from sheet "POIN DAILY"
   const userDailyRow = (dailyLeaderboardQuery.data ?? []).find((r) => {
     if (!user) return false;
-    const nameLower = user.name ? user.name.toLowerCase().trim() : "";
-    const rowNameLower = r.name ? r.name.toLowerCase().trim() : "";
-    const rowIdLower = r.user_id ? r.user_id.toLowerCase().trim() : "";
-    const empLower = user.employee_number ? user.employee_number.toLowerCase().trim() : "";
-    const idLower = user.id ? user.id.toLowerCase().trim() : "";
+    const uName = (user.name || "").toLowerCase().trim();
+    const uEmp = (user.employee_number || "").toLowerCase().trim();
+    const uId = (user.id || "").toLowerCase().trim();
 
-    const matchName = nameLower.length > 0 && (rowNameLower === nameLower || rowNameLower.includes(nameLower) || nameLower.includes(rowNameLower));
-    const matchEmp = empLower.length > 0 && (rowNameLower.includes(empLower) || rowIdLower.includes(empLower));
-    const matchId = idLower.length > 0 && (rowIdLower === idLower || rowNameLower.includes(idLower));
+    const rName = (r.name || "").toLowerCase().trim();
+    const rNopek = (r.nopek || r.employee_number || "").toLowerCase().trim();
+    const rId = (r.user_id || "").toLowerCase().trim();
 
-    return matchName || matchEmp || matchId;
+    if (uEmp && rNopek && uEmp === rNopek) return true;
+    if (uId && rId && uId === rId) return true;
+    if (uName && rName && (uName === rName || rName.includes(uName) || uName.includes(rName))) return true;
+
+    return false;
   });
 
   const userDailyPoints = userDailyRow ? userDailyRow.points : 0;
+  const userBulan1 = userDailyRow?.bulan1 ?? 0;
+  const userBulan2 = userDailyRow?.bulan2 ?? 0;
+  const userBulan3 = userDailyRow?.bulan3 ?? 0;
+
+  // Logic Hadiah Konsistensi Daily: Kolom G (bulan1), Kolom H (bulan2), Kolom I (bulan3) HARUS masing-masing 20 Poin (Maksimal)
+  const isKonsistensiDailyEligible = userBulan1 >= 20 && userBulan2 >= 20 && userBulan3 >= 20;
 
   useEffect(() => {
     loadData();
@@ -104,11 +113,23 @@ function WorkerRewardPage() {
       return;
     }
 
-    if ((reward.category === "milestone" || reward.category === "konsistensi") && userDailyPoints < reward.points_required) {
-      toast.error(
-        `Syarat Poin Daily belum terpenuhi! Poin Daily Anda di sheet POIN DAILY / Leaderboard Best Konsistensi saat ini adalah ${userDailyPoints} Pts. Syarat minimal untuk "${reward.title}" adalah ${reward.points_required} Pts.`
-      );
-      return;
+    // Checking Rules:
+    // 1. Konsistensi Daily: Kolom G, H, I masing-masing HARUS 20 poin
+    if (reward.category === "konsistensi") {
+      if (!isKonsistensiDailyEligible) {
+        toast.error(
+          `Syarat Hadiah Konsistensi Daily belum terpenuhi! Diperlukan poin maksimal 20 poin di setiap bulannya (Bulan 1, Bulan 2, dan Bulan 3). Poin Anda di sheet POIN DAILY: Bulan 1 (${userBulan1}/20), Bulan 2 (${userBulan2}/20), Bulan 3 (${userBulan3}/20).`
+        );
+        return;
+      }
+    } else if (reward.category === "milestone") {
+      // 2. Milestone Achievement: Total G, H, I (Total Poin Daily) harus >= points_required
+      if (userDailyPoints < reward.points_required) {
+        toast.error(
+          `Syarat Milestone belum terpenuhi! Total Poin Daily Anda saat ini adalah ${userDailyPoints} Pts. Syarat minimal untuk "${reward.title}" adalah ${reward.points_required} Pts.`
+        );
+        return;
+      }
     }
 
     claimReward(user, reward);
@@ -269,23 +290,52 @@ function WorkerRewardPage() {
           </Button>
         </div>
 
-        {/* Konsistensi Daily Points Info Banner */}
+        {/* Konsistensi Daily Points Breakdown Banner */}
         {selectedCategory === "konsistensi" && (
-          <div className="rounded-3xl border border-amber-200/80 bg-gradient-to-r from-amber-50/90 via-yellow-50/80 to-orange-50/90 p-5 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-amber-600 text-white font-black shadow-md text-lg">
-                🔥
+          <div className="rounded-3xl border border-amber-200/80 bg-gradient-to-r from-amber-50/90 via-yellow-50/80 to-orange-50/90 p-5 shadow-sm space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-amber-600 text-white font-black shadow-md text-lg">
+                  🔥
+                </div>
+                <div className="space-y-0.5">
+                  <p className="text-xs sm:text-sm font-bold text-amber-900">Syarat Hadiah Konsistensi Daily</p>
+                  <p className="text-xs text-amber-700 font-medium leading-relaxed">
+                    Peserta wajib konsisten meraih <strong>20 Poin Maksimal di Bulan 1, Bulan 2, & Bulan 3</strong>.
+                  </p>
+                </div>
               </div>
-              <div className="space-y-0.5">
-                <p className="text-xs sm:text-sm font-bold text-amber-900">Syarat Hadiah Konsistensi Daily</p>
-                <p className="text-xs text-amber-700 font-medium leading-relaxed">
-                  Poin ditentukan dari pencapaian poin daily di Leaderboard Best Konsistensi. Peserta yang konsisten mencapai poin maksimal (20 Poin per bulan) berhak klaim Voucher MAP.
-                </p>
+
+              <div className="shrink-0 bg-white/90 border border-amber-200 px-4 py-2 rounded-2xl text-center shadow-2xs">
+                <span className="text-[10px] font-bold text-slate-500 block">Status Konsistensi:</span>
+                <span className={`text-xs font-black ${isKonsistensiDailyEligible ? "text-emerald-700" : "text-amber-800"}`}>
+                  {isKonsistensiDailyEligible ? "🎉 Memenuhi Syarat Klaim!" : "⚠️ Belum 20 Pts per Bulan"}
+                </span>
               </div>
             </div>
-            <div className="shrink-0 bg-white/90 border border-amber-200 px-5 py-3 rounded-2xl text-center flex flex-col items-center justify-center shadow-2xs">
-              <span className="text-[11px] font-bold text-slate-500 block leading-tight mb-1 text-center">Poin Daily Anda Saat Ini:</span>
-              <span className="text-xl font-black text-amber-700 leading-none text-center">{userDailyPoints} Pts</span>
+
+            {/* Breakdown Poin Bulan 1, 2, 3 */}
+            <div className="grid grid-cols-3 gap-3 pt-2 border-t border-amber-200/60 text-center text-xs">
+              <div className="bg-white/80 p-2.5 rounded-2xl border border-amber-200">
+                <span className="text-[10px] text-slate-500 font-bold block">Bulan 1</span>
+                <span className={`text-sm font-black ${userBulan1 >= 20 ? "text-emerald-700" : "text-amber-800"}`}>
+                  {userBulan1} / 20 Pts {userBulan1 >= 20 ? "✅" : ""}
+                </span>
+              </div>
+
+              <div className="bg-white/80 p-2.5 rounded-2xl border border-amber-200">
+                <span className="text-[10px] text-slate-500 font-bold block">Bulan 2</span>
+                <span className={`text-sm font-black ${userBulan2 >= 20 ? "text-emerald-700" : "text-amber-800"}`}>
+                  {userBulan2} / 20 Pts {userBulan2 >= 20 ? "✅" : ""}
+                </span>
+              </div>
+
+              <div className="bg-white/80 p-2.5 rounded-2xl border border-amber-200">
+                <span className="text-[10px] text-slate-500 font-bold block">Bulan 3</span>
+                <span className={`text-sm font-black ${userBulan3 >= 20 ? "text-emerald-700" : "text-amber-800"}`}>
+                  {userBulan3} / 20 Pts {userBulan3 >= 20 ? "✅" : ""}
+                </span>
+              </div>
             </div>
           </div>
         )}
@@ -300,12 +350,12 @@ function WorkerRewardPage() {
               <div className="space-y-0.5">
                 <p className="text-xs sm:text-sm font-bold text-emerald-900">Syarat Hadiah Milestone (POIN DAILY)</p>
                 <p className="text-xs text-emerald-700 font-medium leading-relaxed">
-                  Poin ditentukan dari akumulasi Poin Daily Anda pada Leaderboard BEST KONSISTENSI.
+                  Ditentukan dari total akumulasi Poin Daily Anda (Total Kolom G + H + I) di sheet POIN DAILY.
                 </p>
               </div>
             </div>
             <div className="shrink-0 bg-white/90 border border-emerald-200 px-5 py-3 rounded-2xl text-center flex flex-col items-center justify-center shadow-2xs">
-              <span className="text-[11px] font-bold text-slate-500 block leading-tight mb-1 text-center">Poin Daily Anda Saat Ini:</span>
+              <span className="text-[11px] font-bold text-slate-500 block leading-tight mb-1 text-center">Total Poin Daily Anda:</span>
               <span className="text-xl font-black text-emerald-700 leading-none text-center">{userDailyPoints} Pts</span>
             </div>
           </div>
@@ -317,6 +367,14 @@ function WorkerRewardPage() {
             const userClaim = getClaimForReward(reward.id);
             const isDiproses = userClaim?.status === "diproses";
             const isSudahDiklaim = userClaim?.status === "sudah_diklaim";
+
+            // Check eligibility per category:
+            // - konsistensi: bulan1 >= 20 && bulan2 >= 20 && bulan3 >= 20
+            // - milestone: total Poin Daily >= reward.points_required
+            const isEligibleToClaim =
+              reward.category === "konsistensi"
+                ? isKonsistensiDailyEligible
+                : userDailyPoints >= reward.points_required;
 
             return (
               <Card
@@ -345,7 +403,9 @@ function WorkerRewardPage() {
                   <CardHeader className="pb-2">
                     <div className="flex items-center justify-between gap-2">
                       <Badge variant="outline" className="text-[11px] font-bold text-slate-600 border-slate-200 bg-slate-50">
-                        {`Syarat: Min. ${reward.points_required} Poin Daily`}
+                        {reward.category === "konsistensi"
+                          ? "Syarat: 20 Poin Maks/Bulan (Bulan 1, 2, 3)"
+                          : `Syarat: Min. ${reward.points_required} Total Poin Daily`}
                       </Badge>
                     </div>
                     <CardTitle className="text-base sm:text-lg font-black text-slate-900 leading-snug pt-1">
@@ -380,12 +440,23 @@ function WorkerRewardPage() {
                         Permintaan klaim Anda otomatis tercatat & dalam verifikasi Admin.
                       </p>
                     </div>
-                  ) : userDailyPoints < reward.points_required ? (
+                  ) : !isEligibleToClaim ? (
                     <div className="space-y-2">
                       <div className="rounded-2xl border border-rose-200 bg-rose-50/90 p-3 text-center min-h-[50px] flex items-center justify-center">
-                        <div className="flex items-center justify-center gap-1.5 text-[11px] sm:text-xs font-bold text-rose-800 leading-tight">
-                          <Lock className="h-3.5 w-3.5 text-rose-600 shrink-0" />
-                          <span className="whitespace-nowrap">Poin Daily Belum Cukup ({userDailyPoints}/{reward.points_required} Pts)</span>
+                        <div className="flex flex-col items-center justify-center gap-1 text-[11px] font-bold text-rose-800 leading-tight">
+                          <div className="flex items-center gap-1">
+                            <Lock className="h-3.5 w-3.5 text-rose-600 shrink-0" />
+                            <span>
+                              {reward.category === "konsistensi"
+                                ? "Syarat 20 Pts/Bulan Belum Terpenuhi"
+                                : `Poin Daily Belum Cukup (${userDailyPoints}/${reward.points_required} Pts)`}
+                            </span>
+                          </div>
+                          {reward.category === "konsistensi" && (
+                            <span className="text-[10px] text-rose-600 font-normal">
+                              (B1: {userBulan1}/20, B2: {userBulan2}/20, B3: {userBulan3}/20 Pts)
+                            </span>
+                          )}
                         </div>
                       </div>
                       <Button
@@ -395,7 +466,7 @@ function WorkerRewardPage() {
                         className="w-full rounded-2xl border-emerald-300 bg-emerald-50 text-emerald-700 font-bold hover:bg-emerald-100 text-xs shadow-2xs"
                       >
                         <Link to="/leaderboard" search={{ tab: "daily" }}>
-                          <Trophy className="h-4 w-4 mr-1.5" /> Lihat Poin Daily →
+                          <Trophy className="h-4 w-4 mr-1.5" /> Lihat Leaderboard Daily →
                         </Link>
                       </Button>
                     </div>

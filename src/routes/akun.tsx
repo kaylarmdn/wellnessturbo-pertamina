@@ -15,7 +15,7 @@ export const Route = createFileRoute("/akun")({
       { title: "Akun Saya — Wellness Turbo" },
       {
         name: "description",
-        content: "Profil peserta, ringkasan Health Talk, dan total poin challenge Anda.",
+        content: "Profil peserta, ringkasan Pembekalan, dan total poin challenge Anda.",
       },
       { property: "og:title", content: "Akun Saya — Wellness Turbo" },
       { property: "og:description", content: "Profil dan aktivitas wellness Anda." },
@@ -80,7 +80,7 @@ function AkunPage() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Stat label="Health Talk Selesai" value={completed} />
+        <Stat label="Pembekalan Selesai" value={completed} />
         <Stat label="Poin Challenge" value={points} />
       </div>
 

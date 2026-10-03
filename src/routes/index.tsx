@@ -1,13 +1,14 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowRight, IdCard, Lock, ShieldCheck, User } from "lucide-react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { ArrowRight, Eye, EyeOff, IdCard, KeyRound, Lock, LogIn, Mail, ShieldCheck, User } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { BrandLogo } from "@/components/BrandLogo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { authenticateSpreadsheetUser } from "@/lib/api";
-import { getStoredSheetUrl, getStoredUserId, setStoredUserId } from "@/lib/session";
+import { getStoredSheetUrl, getStoredUserId, setStoredAdmin, setStoredUserId } from "@/lib/session";
 
 export const Route = createFileRoute("/")({
   ssr: false,
@@ -27,15 +28,23 @@ export const Route = createFileRoute("/")({
 
 function IdentityPage() {
   const navigate = useNavigate();
+
+  // Pekerja Login state
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // Admin Login state
+  const [adminEmail, setAdminEmail] = useState("");
+  const [adminPassword, setAdminPassword] = useState("");
+  const [showAdminPassword, setShowAdminPassword] = useState(false);
 
   useEffect(() => {
     if (getStoredUserId()) navigate({ to: "/beranda" });
   }, [navigate]);
 
-  const submit = async (e: React.FormEvent) => {
+  const submitPekerja = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!username.trim() || !password.trim()) {
       toast.error("Mohon isi Username dan Password Anda.");
@@ -60,6 +69,31 @@ function IdentityPage() {
     }
   };
 
+  const submitAdmin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!adminEmail.trim() || !adminPassword.trim()) {
+      toast.error("Mohon isi Email dan Password Admin.");
+      return;
+    }
+    setSaving(true);
+    const cleanEmail = adminEmail.trim().toLowerCase();
+    const cleanPass = adminPassword.trim();
+
+    if (cleanEmail === "medicalmorv@gmail.com" && cleanPass === "MEDADMINkyl2026") {
+      setTimeout(() => {
+        setStoredAdmin(true);
+        toast.success("Login Admin berhasil! Selamat datang di Panel Medical Admin.");
+        navigate({ to: "/admin" });
+        setSaving(false);
+      }, 400);
+    } else {
+      setTimeout(() => {
+        toast.error("Email atau Password Admin salah. Silakan periksa kembali.");
+        setSaving(false);
+      }, 400);
+    }
+  };
+
   return (
     <div className="relative min-h-screen grid place-items-center bg-transparent py-10 px-4">
       {/* Ambient background */}
@@ -79,82 +113,152 @@ function IdentityPage() {
             />
           </div>
 
-          {/* <div className="flex justify-center pt-1">
+          <div className="flex justify-center pt-1">
             <BrandLogo size="md" inline={true} showTagline={true} />
-          </div> */}
+          </div>
         </div>
 
-        {/* Form Card */}
+        {/* Role Selection Tabs Card */}
         <section className="glass-card relative rounded-3xl border border-white/90 bg-white/85 p-6 shadow-2xl backdrop-blur-2xl sm:p-8">
-          {/* Mode Switcher Tabs */}
-          <div className="mb-6 flex rounded-2xl border border-indigo-100 bg-slate-100/70 p-1 shadow-sm">
-            <div className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 py-2.5 text-xs font-bold text-white shadow-md">
-              <User className="h-4 w-4" /> Masuk Peserta
-            </div>
-            <a
-              href="/admin/login"
-              className="flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-semibold text-slate-600 transition-all hover:bg-white hover:text-indigo-600 cursor-pointer select-none"
-            >
-              <ShieldCheck className="h-4 w-4 text-purple-600" /> Login Admin
-            </a>
-          </div>
+          <Tabs defaultValue="pekerja" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 rounded-2xl bg-slate-100/90 p-1 mb-6 border border-slate-200/60 shadow-inner">
+              <TabsTrigger
+                value="pekerja"
+                className="rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 py-2.5 data-[state=active]:bg-white data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm transition-all"
+              >
+                <User className="h-4 w-4" /> Login Pekerja
+              </TabsTrigger>
+              <TabsTrigger
+                value="admin"
+                className="rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 py-2.5 data-[state=active]:bg-white data-[state=active]:text-purple-700 data-[state=active]:shadow-sm transition-all"
+              >
+                <ShieldCheck className="h-4 w-4" /> Login Admin
+              </TabsTrigger>
+            </TabsList>
 
-          <div className="flex items-center gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-tr from-blue-100 to-indigo-100 text-indigo-600 shadow-inner">
-              <User className="h-5 w-5" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold tracking-tight text-slate-900">Wellness Turbo</h2>
-              <p className="text-xs text-slate-500">Login Peserta — Masukkan Username (No. Pekerja) & Password</p>
-            </div>
-          </div>
+            {/* TAB 1: PEKERJA */}
+            <TabsContent value="pekerja" className="space-y-4 focus-visible:outline-none">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-tr from-blue-100 to-indigo-100 text-indigo-600 shadow-inner">
+                  <User className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold tracking-tight text-slate-900">Akun Pekerja</h2>
+                  <p className="text-xs text-slate-500">Masukkan Username (No. Pekerja) & Password</p>
+                </div>
+              </div>
 
-          <form className="mt-6 space-y-4" onSubmit={submit}>
-            <Field icon={IdCard} label="Username / Nomor Pekerja">
-              <Input
-                value={username}
-                maxLength={100}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Masukkan Username / No. Pekerja Anda"
-                className="rounded-xl border-slate-200 bg-white/90 focus:border-indigo-500 focus:ring-indigo-500"
-                required
-              />
-            </Field>
+              <form className="space-y-4" onSubmit={submitPekerja}>
+                <Field icon={IdCard} label="Username / Nomor Pekerja">
+                  <Input
+                    value={username}
+                    maxLength={100}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="Masukkan Username / No. Pekerja Anda"
+                    className="rounded-xl border-slate-200 bg-white/90 focus:border-indigo-500 focus:ring-indigo-500"
+                    required
+                  />
+                </Field>
 
-            <Field icon={Lock} label="Password">
-              <Input
-                type="password"
-                value={password}
-                maxLength={100}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Masukkan Password Anda"
-                className="rounded-xl border-slate-200 bg-white/90 focus:border-indigo-500 focus:ring-indigo-500"
-                required
-              />
-            </Field>
+                <Field icon={Lock} label="Password">
+                  <div className="relative">
+                    <Input
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      maxLength={100}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Masukkan Password Anda"
+                      className="pr-10 rounded-xl border-slate-200 bg-white/90 focus:border-indigo-500 focus:ring-indigo-500"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1"
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </Field>
 
-            <Button
-              type="submit"
-              size="lg"
-              className="mt-3 w-full rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 font-bold text-white shadow-lg shadow-indigo-500/25 transition-all hover:scale-[1.01] active:scale-[0.98]"
-              disabled={saving}
-            >
-              <ArrowRight className="h-4 w-4" />
-              {saving ? "Memverifikasi Login..." : "Masuk ke Wellness Turbo"}
-            </Button>
-          </form>
+                <Button
+                  type="submit"
+                  size="lg"
+                  className="mt-3 w-full rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 font-bold text-white shadow-lg shadow-indigo-500/25 transition-all hover:scale-[1.01] active:scale-[0.98]"
+                  disabled={saving}
+                >
+                  <ArrowRight className="h-4 w-4" />
+                  {saving ? "Memverifikasi Login..." : "Masuk ke Wellness Turbo"}
+                </Button>
+              </form>
 
-          <p className="mt-6 flex items-center justify-between text-xs text-slate-500 border-t border-slate-100 pt-4">
-            <span className="flex items-center gap-1.5">
-              <Lock className="h-3.5 w-3.5 shrink-0 text-indigo-500" /> Verifikasi data sheet USER.
-            </span>
-            <Link
-              to="/admin/login"
-              className="font-bold text-indigo-600 hover:text-indigo-800 transition-colors flex items-center gap-1"
-            >
-              <ShieldCheck className="h-3.5 w-3.5" /> Login Admin →
-            </Link>
-          </p>
+              <p className="mt-5 text-center text-xs text-slate-500 border-t border-slate-100 pt-3 flex items-center justify-center gap-1.5">
+                <Lock className="h-3.5 w-3.5 shrink-0 text-indigo-500" /> Verifikasi data akun pekerja terproteksi.
+              </p>
+            </TabsContent>
+
+            {/* TAB 2: ADMIN */}
+            <TabsContent value="admin" className="space-y-4 focus-visible:outline-none">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-tr from-purple-100 to-indigo-100 text-purple-600 shadow-inner">
+                  <ShieldCheck className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold tracking-tight text-slate-900">Medical Admin</h2>
+                  <p className="text-xs text-slate-500">Kelola Pembekalan, Challenge, Reward & Leaderboard</p>
+                </div>
+              </div>
+
+              <form className="space-y-4" onSubmit={submitAdmin}>
+                <Field icon={Mail} label="Email Admin">
+                  <Input
+                    type="text"
+                    value={adminEmail}
+                    onChange={(e) => setAdminEmail(e.target.value.replace(/,/g, "."))}
+                    placeholder="Masukkan Email Admin..."
+                    className="rounded-xl border-slate-200 bg-white/90 focus:border-purple-500 focus:ring-purple-500"
+                    required
+                  />
+                </Field>
+
+                <Field icon={KeyRound} label="Password Admin">
+                  <div className="relative">
+                    <Input
+                      type={showAdminPassword ? "text" : "password"}
+                      value={adminPassword}
+                      onChange={(e) => setAdminPassword(e.target.value)}
+                      placeholder="Masukkan Password Admin..."
+                      className="pr-10 rounded-xl border-slate-200 bg-white/90 focus:border-purple-500 focus:ring-purple-500"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowAdminPassword(!showAdminPassword)}
+                      aria-label={showAdminPassword ? "Sembunyikan password" : "Tampilkan password"}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1"
+                    >
+                      {showAdminPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </Field>
+
+                <Button
+                  type="submit"
+                  size="lg"
+                  className="mt-3 w-full rounded-2xl bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 font-bold text-white shadow-lg shadow-purple-500/25 transition-all hover:scale-[1.01] active:scale-[0.98]"
+                  disabled={saving}
+                >
+                  <LogIn className="h-4 w-4" />
+                  {saving ? "Memverifikasi Admin..." : "Masuk sebagai Admin"}
+                </Button>
+              </form>
+
+              <p className="mt-5 text-center text-xs text-slate-500 border-t border-slate-100 pt-3 flex items-center justify-center gap-1.5">
+                <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-purple-500" /> Akses terenkripsi Medical Admin.
+              </p>
+            </TabsContent>
+          </Tabs>
         </section>
       </div>
     </div>

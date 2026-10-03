@@ -24,7 +24,6 @@ import {
   getStoredClaims,
   getStoredNotifications,
   listEvents,
-  listHealthTalks,
   markAllNotificationsAsRead,
   markNotificationAsRead,
 } from "@/lib/api";
@@ -37,12 +36,11 @@ export function NotificationPopover() {
   const [isOpen, setIsOpen] = useState(false);
 
   const events = useQuery({ queryKey: ["events"], queryFn: listEvents });
-  const healthTalks = useQuery({ queryKey: ["health-talks"], queryFn: () => listHealthTalks() });
 
   const loadNotifications = () => {
     const claims = getStoredClaims();
-    if (events.data || healthTalks.data) {
-      generateAutomatedNotifications(user, events.data ?? [], healthTalks.data ?? [], claims);
+    if (events.data) {
+      generateAutomatedNotifications(user, events.data ?? [], claims);
     }
     const notifs = getStoredNotifications(user?.id);
     setNotifications(notifs);
@@ -50,7 +48,7 @@ export function NotificationPopover() {
 
   useEffect(() => {
     loadNotifications();
-  }, [user?.id, events.data, healthTalks.data]);
+  }, [user?.id, events.data]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 

@@ -305,7 +305,7 @@ function LeaderboardPage() {
 
       {/* Table */}
       <div className="glass-card overflow-x-auto rounded-3xl border border-purple-100 bg-white/95 shadow-md">
-        <table className="w-full text-sm">
+        <table className="w-full min-w-[650px] text-sm">
           <thead className="bg-slate-50/80 text-left text-xs font-bold text-slate-600 uppercase tracking-wider border-b border-slate-200/60">
             <tr>
               <th className="px-5 py-3.5">#</th>
