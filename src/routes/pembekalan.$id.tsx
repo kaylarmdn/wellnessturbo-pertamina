@@ -61,6 +61,15 @@ function getYouTubeVideoId(url: string): string | null {
   return match && match[1] ? match[1] : null;
 }
 
+function getGoogleDriveEmbedUrl(url: string): string | null {
+  if (!url) return null;
+  const match = url.match(/(?:drive\.google\.com\/file\/d\/|drive\.google\.com\/open\?id=)([a-zA-Z0-9_-]+)/);
+  if (match && match[1]) {
+    return `https://drive.google.com/file/d/${match[1]}/preview`;
+  }
+  return null;
+}
+
 function formatTime(seconds: number): string {
   if (!seconds || isNaN(seconds) || !Number.isFinite(seconds)) return "00:00";
   const m = Math.floor(seconds / 60);
@@ -278,6 +287,7 @@ function PembekalanDetailPage() {
 
   const mod = modQuery.data;
   const youtubeId = getYouTubeVideoId(mod.video_url);
+  const googleDriveUrl = getGoogleDriveEmbedUrl(mod.video_url);
 
   // Find next module in order
   const allModules = [...(allModulesQuery.data ?? [])].sort((a, b) => a.module_order - b.module_order);
@@ -312,6 +322,15 @@ function PembekalanDetailPage() {
             onEnded={onEnded}
             completed={videoCompleted}
           />
+        ) : googleDriveUrl ? (
+          <div className="relative aspect-video w-full">
+            <iframe
+              src={googleDriveUrl}
+              className="h-full w-full border-0"
+              allow="autoplay; encrypted-media; fullscreen"
+              allowFullScreen
+            />
+          </div>
         ) : (
           <video
             ref={videoRef}

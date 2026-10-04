@@ -285,7 +285,7 @@ const INITIAL_PEMBEKALAN_MODULES: PembekalanModule[] = [
     id: "pem-1",
     title: "Pembekalan 1: Pengenalan Program Wellness & Kebugaran",
     description: "Materi dasar mengenai pentingnya menjaga kebugaran kerja, nutrisi seimbang, serta pengenalan fasilitas medis perusahaan.",
-    video_url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    video_url: "https://drive.google.com/file/d/191p6U_f30n0EvamWkDADKkYgBccNLLkA/view?usp=sharing",
     module_order: 1,
     status: "published",
     created_at: new Date().toISOString(),
@@ -367,7 +367,13 @@ export function getStoredPembekalanModules(): PembekalanModule[] {
       localStorage.setItem(STORAGE_PEMBEKALAN_MODULES_KEY, JSON.stringify(INITIAL_PEMBEKALAN_MODULES));
       return INITIAL_PEMBEKALAN_MODULES;
     }
-    return JSON.parse(raw);
+    const parsed: PembekalanModule[] = JSON.parse(raw);
+    const pem1 = parsed.find((m) => m.id === "pem-1" || m.module_order === 1);
+    if (pem1 && (pem1.video_url.includes("dQw4w9WgXcQ") || !pem1.video_url)) {
+      pem1.video_url = "https://drive.google.com/file/d/191p6U_f30n0EvamWkDADKkYgBccNLLkA/view?usp=sharing";
+      localStorage.setItem(STORAGE_PEMBEKALAN_MODULES_KEY, JSON.stringify(parsed));
+    }
+    return parsed;
   } catch {
     return INITIAL_PEMBEKALAN_MODULES;
   }
@@ -900,11 +906,21 @@ export async function uploadMediaFile(file: File, bucketName: string): Promise<s
       const publicUrl = supabase.storage.from(bucketName).getPublicUrl(data.path).data.publicUrl;
       return publicUrl;
     }
-  } catch {
-    // fallback if bucket not created or permission error
+    if (error) {
+      console.warn(`Supabase Storage upload error for bucket "${bucketName}":`, error.message);
+    }
+  } catch (err) {
+    console.warn(`Supabase Storage error for bucket "${bucketName}":`, err);
   }
 
-  // Fallback to Data URL for seamless client preview
+  // Files larger than 2MB cannot be stored as base64 Data URLs in browser localStorage (max 5MB limit)
+  if (file.size > 2 * 1024 * 1024) {
+    throw new Error(
+      `File "${file.name}" (${(file.size / (1024 * 1024)).toFixed(1)} MB) terlalu besar untuk disimpan langsung di browser. Silakan tempelkan Link Video (YouTube / MP4 URL) pada kolom URL yang disediakan.`
+    );
+  }
+
+  // Fallback to Data URL for small media files (< 2MB)
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result as string);
