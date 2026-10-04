@@ -433,17 +433,15 @@ function PembekalanDetailPage() {
           </div>
         </div>
 
-        <div
-          className="relative w-full cursor-pointer py-1 group"
-          title="Klik pada garis untuk menyesuaikan posisi menit tontonan"
-          onClick={(e) => {
-            const rect = e.currentTarget.getBoundingClientRect();
-            const clickX = e.clientX - rect.left;
-            const width = rect.width;
-            if (width > 0) {
-              const clickRatio = Math.max(0, Math.min(1, clickX / width));
+        <div className="space-y-2">
+          <input
+            type="range"
+            min={0}
+            max={duration > 0 ? duration : 1117}
+            value={currentTime}
+            onChange={(e) => {
+              const newTime = Number(e.target.value);
               const totalDur = duration > 0 ? duration : 1117;
-              const newTime = Math.floor(clickRatio * totalDur);
               setCurrentTime(newTime);
               const pct = Math.min(100, Math.floor((newTime / totalDur) * 100));
               setPercent(pct);
@@ -452,11 +450,65 @@ function PembekalanDetailPage() {
               if (pct >= 99) {
                 handleMarkVideoComplete();
               }
-            }
-          }}
-        >
-          <Progress value={percent} className="h-4 rounded-full bg-slate-100 [&>div]:bg-gradient-to-r [&>div]:from-sky-500 [&>div]:via-indigo-600 [&>div]:to-emerald-500 transition-all duration-300 group-hover:ring-2 group-hover:ring-indigo-400/50" />
+            }}
+            className="w-full h-3 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600 hover:accent-indigo-700 transition-all"
+            title="Geser slider ini untuk menggeser menit video"
+          />
+
+          <div
+            className="relative w-full cursor-pointer py-0.5 group"
+            title="Klik pada garis untuk menyesuaikan posisi menit tontonan"
+            onClick={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect();
+              const clickX = e.clientX - rect.left;
+              const width = rect.width;
+              if (width > 0) {
+                const clickRatio = Math.max(0, Math.min(1, clickX / width));
+                const totalDur = duration > 0 ? duration : 1117;
+                const newTime = Math.floor(clickRatio * totalDur);
+                setCurrentTime(newTime);
+                const pct = Math.min(100, Math.floor((newTime / totalDur) * 100));
+                setPercent(pct);
+                lastSaved.current = pct;
+                void persist(pct, pct >= 99);
+                if (pct >= 99) {
+                  handleMarkVideoComplete();
+                }
+              }
+            }}
+          >
+            <Progress value={percent} className="h-3 rounded-full bg-slate-100 [&>div]:bg-gradient-to-r [&>div]:from-sky-500 [&>div]:via-indigo-600 [&>div]:to-emerald-500 transition-all duration-300 group-hover:ring-2 group-hover:ring-indigo-400/50" />
+          </div>
         </div>
+
+        {googleDriveUrl && !videoCompleted && (
+          <div className="flex flex-wrap items-center gap-1.5 pt-1">
+            <span className="text-[11px] text-slate-500 font-medium">Lompat cepat menit:</span>
+            {[300, 600, 900, 1100, 1117].map((sec) => {
+              const totalDur = duration > 0 ? duration : 1117;
+              const actualSec = Math.min(sec, totalDur);
+              return (
+                <button
+                  key={sec}
+                  type="button"
+                  onClick={() => {
+                    setCurrentTime(actualSec);
+                    const pct = Math.min(100, Math.floor((actualSec / totalDur) * 100));
+                    setPercent(pct);
+                    lastSaved.current = pct;
+                    void persist(pct, pct >= 99);
+                    if (pct >= 99) {
+                      handleMarkVideoComplete();
+                    }
+                  }}
+                  className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-indigo-100 text-slate-700 hover:text-indigo-700 text-[11px] font-bold border border-slate-200 transition-all"
+                >
+                  ⏱️ {formatTime(actualSec)}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {!videoCompleted && percent < 100 ? (
           <div className="pt-3 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-100">
