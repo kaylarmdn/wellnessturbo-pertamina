@@ -77,7 +77,9 @@ function formatTime(seconds: number): string {
   if (!seconds || isNaN(seconds) || !Number.isFinite(seconds)) return "00:00";
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
-  return `${m}:${s < 10 ? "0" : ""}${s}`;
+  const mStr = m < 10 ? `0${m}` : `${m}`;
+  const sStr = s < 10 ? `0${s}` : `${s}`;
+  return `${mStr}:${sStr}`;
 }
 
 function YouTubePlayer({
@@ -193,11 +195,18 @@ function PembekalanDetailPage() {
     if (progressQuery.data) {
       setPercent(progressQuery.data.video_progress_percentage);
       setVideoCompleted(progressQuery.data.video_completed);
+      const totalDur = duration > 0 ? duration : 1117;
       if (progressQuery.data.video_completed) {
         setPercent(100);
+        setCurrentTime(totalDur);
+        setDrivePlaying(false);
+      } else {
+        const initialTime = Math.floor((progressQuery.data.video_progress_percentage / 100) * totalDur);
+        setCurrentTime((prev) => (prev === 0 ? initialTime : prev));
+        setDrivePlaying(true);
       }
     }
-  }, [progressQuery.data]);
+  }, [progressQuery.data, duration]);
 
   const persist = useCallback(
     async (pct: number, done: boolean) => {
@@ -424,22 +433,47 @@ function PembekalanDetailPage() {
           </div>
         </div>
 
-        <Progress value={percent} className="h-3.5 rounded-full bg-slate-100 [&>div]:bg-gradient-to-r [&>div]:from-sky-500 [&>div]:via-indigo-600 [&>div]:to-emerald-500 transition-all duration-300" />
+        <div
+          className="relative w-full cursor-pointer py-1 group"
+          title="Klik pada garis untuk menyesuaikan posisi menit tontonan"
+          onClick={(e) => {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const width = rect.width;
+            if (width > 0) {
+              const clickRatio = Math.max(0, Math.min(1, clickX / width));
+              const totalDur = duration > 0 ? duration : 1117;
+              const newTime = Math.floor(clickRatio * totalDur);
+              setCurrentTime(newTime);
+              const pct = Math.min(100, Math.floor((newTime / totalDur) * 100));
+              setPercent(pct);
+              lastSaved.current = pct;
+              void persist(pct, pct >= 99);
+              if (pct >= 99) {
+                handleMarkVideoComplete();
+              }
+            }
+          }}
+        >
+          <Progress value={percent} className="h-4 rounded-full bg-slate-100 [&>div]:bg-gradient-to-r [&>div]:from-sky-500 [&>div]:via-indigo-600 [&>div]:to-emerald-500 transition-all duration-300 group-hover:ring-2 group-hover:ring-indigo-400/50" />
+        </div>
 
         {!videoCompleted && percent < 100 ? (
           <div className="pt-3 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-100">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col gap-1">
               {googleDriveUrl && (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setDrivePlaying(!drivePlaying)}
-                  className="rounded-2xl text-xs font-bold border-indigo-200 text-indigo-700 bg-indigo-50/60 hover:bg-indigo-100 gap-1.5"
-                >
-                  {drivePlaying ? <PauseCircle className="h-4 w-4 text-indigo-600" /> : <PlayCircle className="h-4 w-4 text-indigo-600" />}
-                  {drivePlaying ? "Jeda Sinkron Waktu" : "Mulai Sinkron Waktu Nonton"}
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setDrivePlaying(!drivePlaying)}
+                    className="rounded-2xl text-xs font-bold border-indigo-200 text-indigo-700 bg-indigo-50/60 hover:bg-indigo-100 gap-1.5"
+                  >
+                    {drivePlaying ? <PauseCircle className="h-4 w-4 text-indigo-600" /> : <PlayCircle className="h-4 w-4 text-indigo-600" />}
+                    {drivePlaying ? "Jeda Timer Sinkron" : "Jalankan Timer Sinkron"}
+                  </Button>
+                </div>
               )}
             </div>
             <Button
