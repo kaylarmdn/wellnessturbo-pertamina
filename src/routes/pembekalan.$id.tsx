@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  Clock,
   GraduationCap,
   HelpCircle,
   Info,
@@ -211,7 +212,25 @@ function PembekalanDetailPage() {
     [user, id, queryClient],
   );
 
-  const quizRef = useRef<HTMLDivElement>(null);
+  const [timerSeconds, setTimerSeconds] = useState(120);
+
+  useEffect(() => {
+    let timer: any;
+    if (!videoCompleted && timerSeconds > 0) {
+      timer = setInterval(() => {
+        setTimerSeconds((prev) => (prev > 0 ? prev - 1 : 0));
+      }, 1000);
+    }
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [videoCompleted, timerSeconds]);
+
+  const formatCountdown = (sec: number): string => {
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${m < 10 ? "0" : ""}${m}:${s < 10 ? "0" : ""}${s}`;
+  };
 
   const handleMarkVideoComplete = useCallback(() => {
     setPercent(100);
@@ -380,7 +399,7 @@ function PembekalanDetailPage() {
       )}
 
       {/* Konfirmasi Tonton Video & Akses Quiz */}
-      {!videoCompleted && percent < 100 ? (
+      {!videoCompleted ? (
         <div className="glass-panel rounded-3xl p-6 border border-indigo-100/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
           <div className="flex items-center gap-3">
             <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-indigo-50 text-indigo-600 font-bold">
@@ -389,17 +408,35 @@ function PembekalanDetailPage() {
             <div>
               <h3 className="text-sm font-bold text-slate-800">Status Menonton Video</h3>
               <p className="text-xs text-slate-500 font-medium">
-                Setelah selesai menonton video pembekalan di atas, tekan tombol konfirmasi untuk membuka Quiz.
+                {timerSeconds > 0 ? (
+                  <span>
+                    Harap tonton video minimal selama <strong className="text-indigo-600">2 menit</strong>. Tombol konfirmasi akan aktif setelah timer hitung mundur berakhir.
+                  </span>
+                ) : (
+                  <span>
+                    Timer 2 menit telah selesai! Silakan tekan tombol konfirmasi untuk membuka Quiz.
+                  </span>
+                )}
               </p>
             </div>
           </div>
-          <Button
-            type="button"
-            onClick={handleMarkVideoComplete}
-            className="w-full sm:w-auto rounded-2xl text-xs sm:text-sm font-bold bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:brightness-110 shadow-md gap-2 py-3 px-6 shrink-0"
-          >
-            <CheckCircle2 className="h-4.5 w-4.5" /> Tandai Video Selesai & Lanjut ke Quiz
-          </Button>
+          {timerSeconds > 0 ? (
+            <Button
+              type="button"
+              disabled
+              className="w-full sm:w-auto rounded-2xl text-xs sm:text-sm font-bold bg-slate-200 text-slate-500 cursor-not-allowed border border-slate-300 gap-2 py-3 px-6 shrink-0"
+            >
+              <Clock className="h-4.5 w-4.5 text-slate-400 animate-spin" /> Tonton Video ({formatCountdown(timerSeconds)})
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              onClick={handleMarkVideoComplete}
+              className="w-full sm:w-auto rounded-2xl text-xs sm:text-sm font-bold bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:brightness-110 shadow-md gap-2 py-3 px-6 shrink-0 animate-pulse"
+            >
+              <CheckCircle2 className="h-4.5 w-4.5" /> Tandai Video Selesai & Lanjut ke Quiz
+            </Button>
+          )}
         </div>
       ) : (
         <div className="glass-panel rounded-3xl p-6 border border-emerald-200/80 bg-emerald-50/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
@@ -454,7 +491,9 @@ function PembekalanDetailPage() {
             </div>
             <h3 className="font-bold text-slate-800 text-base">Quiz Terkunci</h3>
             <p className="text-xs text-slate-600 font-medium max-w-sm mx-auto">
-              Silakan tonton video di atas, kemudian tekan tombol <span className="font-bold text-indigo-600">"Tandai Video Selesai & Lanjut ke Quiz"</span> untuk membuka quiz ini.
+              {timerSeconds > 0
+                ? `Harap tonton video minimal selama 2 menit (sisa ${formatCountdown(timerSeconds)}). Setelah itu, tekan tombol "Tandai Video Selesai" untuk membuka quiz ini.`
+                : `Timer 2 menit telah selesai! Silakan tekan tombol "Tandai Video Selesai & Lanjut ke Quiz" di atas untuk membuka quiz ini.`}
             </p>
           </div>
         ) : isQuizCompleted ? (
