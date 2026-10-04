@@ -293,9 +293,9 @@ const INITIAL_PEMBEKALAN_MODULES: PembekalanModule[] = [
   },
   {
     id: "pem-2",
-    title: "Pembekalan 2: Kesehatan Kerja, Ergonomi & Manajemen Stress",
-    description: "Modul pelatihan lanjutan mengenai posisi kerja ergonomis, pencegahan cedera tulang belakang, serta manajemen beban kerja mental.",
-    video_url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    title: "Pembekalan 2: Materi dr. Liona, Sp.GK",
+    description: "Modul pelatihan kesehatan dan ilmu gizi mengenai weight loss, hormonal response, obesitas, dan yo-yo effect.",
+    video_url: "https://drive.google.com/file/d/1ZfqG9CzrtWba4gi5rrjURHcCtQRhYwJc/view?usp=sharing",
     module_order: 2,
     status: "published",
     created_at: new Date().toISOString(),
@@ -303,9 +303,9 @@ const INITIAL_PEMBEKALAN_MODULES: PembekalanModule[] = [
   },
   {
     id: "pem-3",
-    title: "Pembekalan 3: Pola Hidup Sehat & Pencegahan Penyakit Kronis",
-    description: "Panduan komprehensif mengelola pola makan, aktivitas fisik harian, serta pemeriksaan kesehatan berkala bagi pekerja.",
-    video_url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    title: "Pembekalan 3: Materi dr. Nanang",
+    description: "Modul panduan strategi olahraga aman, denyut nadi maksimal, serta manfaat olahraga bagi pekerja hipertensi & diabetes.",
+    video_url: "https://drive.google.com/file/d/1d59lrpYa3PC17OILLZ3MKJVQJ0dFmhDo/view?usp=sharing",
     module_order: 3,
     status: "published",
     created_at: new Date().toISOString(),
@@ -369,27 +369,117 @@ const INITIAL_PEMBEKALAN_QUESTIONS: PembekalanQuizQuestion[] = [
     correct_answer: "D",
     question_order: 5,
   },
+  /* Pembekalan 2 - dr. Liona, Sp.GK */
   {
     id: "q-pem-2-1",
     module_id: "pem-2",
-    question: "Apa fungsi utama dari prinsip ergonomi di tempat kerja?",
-    option_a: "Mencegah cedera otot dan menjaga postur tubuh yang benar",
-    option_b: "Membuat tempat kerja terlihat lebih menarik",
-    option_c: "Mempercepat waktu pulang",
-    option_d: "Menghilangkan kebutuhan olahraga",
-    correct_answer: "A",
+    question: "Mengapa tubuh menganggap weight loss sebagai sesuatu yang harus dilawan ?",
+    option_a: "Cadangan energi berkurang",
+    option_b: "Hormon nafsu makan berkurang",
+    option_c: "Pengeluaran energi menurun",
+    option_d: "Semua jawaban benar",
+    correct_answer: "D",
     question_order: 1,
   },
   {
+    id: "q-pem-2-2",
+    module_id: "pem-2",
+    question: "Apa dampak perubahan hormon didalam tubuh setelah mengalami weight loss ? Kecuali ...",
+    option_a: "Peningkatan rasa lapar",
+    option_b: "Peningkatan keinginan untuk makan",
+    option_c: "Rasa untuk selalu ingin mencari makanan",
+    option_d: "Lebih mudah kenyang dan tidak ingin makan",
+    correct_answer: "D",
+    question_order: 2,
+  },
+  {
+    id: "q-pem-2-3",
+    module_id: "pem-2",
+    question: "Faktor lingkungan yang menjadi faktor penyebab obesitas antara lain ?",
+    option_a: "Makanan tinggi energi, dan ultra processed mudah diakses",
+    option_b: "Aktivitas fisik yang cukup dan teratur",
+    option_c: "Konsumsi sayur dan buah yang tinggi setiap hari",
+    option_d: "Ketersediaan fasilitas olahraga yang mudah diakses",
+    correct_answer: "A",
+    question_order: 3,
+  },
+  {
+    id: "q-pem-2-4",
+    module_id: "pem-2",
+    question: "Bagaimana cara selalu mempertahankan berat badan setelah berhasil weigt loss ?",
+    option_a: "Atur pola makan yang sehat dan berkelanjutan",
+    option_b: "Tingkatkan aktivitas fisik",
+    option_c: "kelola tidur dan stress",
+    option_d: "Semua benar",
+    correct_answer: "D",
+    question_order: 4,
+  },
+  {
+    id: "q-pem-2-5",
+    module_id: "pem-2",
+    question: "Apa yang dimaksud dengan yo-yo effect pada penurunan berat badan?",
+    option_a: "Berat badan turun secara bertahap dan dapat dipertahankan dalam jangka panjang",
+    option_b: "Berat badan turun kemudian naik kembali setelah program penurunan berat badan berhenti",
+    option_c: "Berat badan meningkat karena bertambahnya massa otot",
+    option_d: "Berat badan tetap stabil meskipun pola makan berubah",
+    correct_answer: "B",
+    question_order: 5,
+  },
+  /* Pembekalan 3 - dr. Nanang */
+  {
     id: "q-pem-3-1",
     module_id: "pem-3",
-    question: "Berapa frekuensi jalan kaki/olahraga ringan yang direkomendasikan setiap minggu?",
-    option_a: "Minimal 150 menit per minggu",
-    option_b: "10 menit per bulan",
-    option_c: "Tidak perlu olahraga sama sekali",
-    option_d: "Hanya saat merasa sakit",
-    correct_answer: "A",
+    question: "Bagaimana strategi memulai olah raga yang aman dan efektif ? Kecuali .",
+    option_a: "Mulai dengan perlahan dan bertahap",
+    option_b: "Selalu memenuhi kebutuhan cairan",
+    option_c: "Melakukan gerakan olahraga dan perlengkapan yang baik",
+    option_d: "Berfokus pada target yang agresif",
+    correct_answer: "D",
     question_order: 1,
+  },
+  {
+    id: "q-pem-3-2",
+    module_id: "pem-3",
+    question: "Berapa target waktu olah raga dengan intensitas sedang ?",
+    option_a: "150 – 300 menit per Minggu",
+    option_b: "150 – 300 menit per Hari",
+    option_c: "200 – 300 menit per Minggu",
+    option_d: "200 – 300 menit per Hari",
+    correct_answer: "A",
+    question_order: 2,
+  },
+  {
+    id: "q-pem-3-3",
+    module_id: "pem-3",
+    question: "Bagaimana penghitungan denyut nadi maksimal saat melakukan olah raga ?",
+    option_a: "150 – Usia",
+    option_b: "220 – Usia",
+    option_c: "220 – Nadi sebelum olah raga",
+    option_d: "100 + Usia",
+    correct_answer: "B",
+    question_order: 3,
+  },
+  {
+    id: "q-pem-3-4",
+    module_id: "pem-3",
+    question: "Apa manfaat olahraga pada pekerja dengan hipertensi",
+    option_a: "Meningkatkan kekuatan otot jantung",
+    option_b: "Menurunkan tekanan darah 8 – 9 mmHg",
+    option_c: "Meningkatkan elastisitas pembuluh darah",
+    option_d: "Benar semua",
+    correct_answer: "D",
+    question_order: 4,
+  },
+  {
+    id: "q-pem-3-5",
+    module_id: "pem-3",
+    question: "Apa manfaat olah raga pada pekerja dengan diabetes ? Kecuali",
+    option_a: "Meningkatkan toleransi glukosa",
+    option_b: "Meningkatkan sensitivitas insulin",
+    option_c: "Menurunkan HbA1C",
+    option_d: "Meningkatkan gula darah puasa",
+    correct_answer: "D",
+    question_order: 5,
   },
 ];
 
@@ -404,8 +494,18 @@ export function getStoredPembekalanModules(): PembekalanModule[] {
     const pem1 = parsed.find((m) => m.id === "pem-1" || m.module_order === 1);
     if (pem1 && (pem1.video_url.includes("dQw4w9WgXcQ") || !pem1.video_url)) {
       pem1.video_url = "https://drive.google.com/file/d/191p6U_f30n0EvamWkDADKkYgBccNLLkA/view?usp=sharing";
-      localStorage.setItem(STORAGE_PEMBEKALAN_MODULES_KEY, JSON.stringify(parsed));
     }
+    const pem2 = parsed.find((m) => m.id === "pem-2" || m.module_order === 2);
+    if (pem2 && (pem2.video_url.includes("dQw4w9WgXcQ") || !pem2.video_url)) {
+      pem2.video_url = "https://drive.google.com/file/d/1ZfqG9CzrtWba4gi5rrjURHcCtQRhYwJc/view?usp=sharing";
+      pem2.title = "Pembekalan 2: Materi dr. Liona, Sp.GK";
+    }
+    const pem3 = parsed.find((m) => m.id === "pem-3" || m.module_order === 3);
+    if (pem3 && (pem3.video_url.includes("dQw4w9WgXcQ") || !pem3.video_url)) {
+      pem3.video_url = "https://drive.google.com/file/d/1d59lrpYa3PC17OILLZ3MKJVQJ0dFmhDo/view?usp=sharing";
+      pem3.title = "Pembekalan 3: Materi dr. Nanang";
+    }
+    localStorage.setItem(STORAGE_PEMBEKALAN_MODULES_KEY, JSON.stringify(parsed));
     return parsed;
   } catch {
     return INITIAL_PEMBEKALAN_MODULES;
@@ -483,14 +583,34 @@ export function getStoredPembekalanQuestions(moduleId?: string): PembekalanQuizQ
     const raw = localStorage.getItem(STORAGE_PEMBEKALAN_QUESTIONS_KEY);
     let list: PembekalanQuizQuestion[] = raw ? JSON.parse(raw) : INITIAL_PEMBEKALAN_QUESTIONS;
     
-    // Always update pem-1 questions with latest 5 questions from Ibu Meutia
+    let updated = false;
+
+    // Sync pem-1 questions
     const pem1Questions = INITIAL_PEMBEKALAN_QUESTIONS.filter((q) => q.module_id === "pem-1");
     const existingPem1Question = list.find((q) => q.module_id === "pem-1");
     if (!existingPem1Question || existingPem1Question.question.includes("tujuan utama") || list.filter((q) => q.module_id === "pem-1").length < 5) {
       list = list.filter((q) => q.module_id !== "pem-1").concat(pem1Questions);
+      updated = true;
+    }
+
+    // Sync pem-2 questions (dr. Liona)
+    const pem2Questions = INITIAL_PEMBEKALAN_QUESTIONS.filter((q) => q.module_id === "pem-2");
+    const existingPem2Question = list.find((q) => q.module_id === "pem-2");
+    if (!existingPem2Question || existingPem2Question.question.includes("fungsi utama dari prinsip ergonomi") || list.filter((q) => q.module_id === "pem-2").length < 5) {
+      list = list.filter((q) => q.module_id !== "pem-2").concat(pem2Questions);
+      updated = true;
+    }
+
+    // Sync pem-3 questions (dr. Nanang)
+    const pem3Questions = INITIAL_PEMBEKALAN_QUESTIONS.filter((q) => q.module_id === "pem-3");
+    const existingPem3Question = list.find((q) => q.module_id === "pem-3");
+    if (!existingPem3Question || existingPem3Question.question.includes("frekuensi jalan kaki") || list.filter((q) => q.module_id === "pem-3").length < 5) {
+      list = list.filter((q) => q.module_id !== "pem-3").concat(pem3Questions);
+      updated = true;
+    }
+
+    if (updated || !raw) {
       localStorage.setItem(STORAGE_PEMBEKALAN_QUESTIONS_KEY, JSON.stringify(list));
-    } else if (!raw) {
-      localStorage.setItem(STORAGE_PEMBEKALAN_QUESTIONS_KEY, JSON.stringify(INITIAL_PEMBEKALAN_QUESTIONS));
     }
 
     if (moduleId) list = list.filter((q) => q.module_id === moduleId);
