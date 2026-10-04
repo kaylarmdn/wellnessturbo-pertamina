@@ -1311,7 +1311,11 @@ export async function authenticateSpreadsheetUser(
   let participantFunction = "Peserta";
 
   try {
-    const userMetaMap = await fetchUserMetadataMap(sheetUrl);
+    const [userMetaMap, leaderboardRows] = await Promise.all([
+      fetchUserMetadataMap(sheetUrl).catch(() => ({ byUsername: new Map(), byName: new Map() })),
+      fetchSpreadsheetLeaderboard(sheetUrl, "TURBO RACE").catch(() => []),
+    ]);
+
     const cleanKey = (str: string) => str.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
     const meta = userMetaMap.byUsername.get(match.username.toLowerCase()) || userMetaMap.byName.get(cleanKey(match.name || ""));
     if (meta) {
@@ -1321,7 +1325,6 @@ export async function authenticateSpreadsheetUser(
     }
 
     if (participantLocation === "General" || participantFunction === "Peserta") {
-      const leaderboardRows = await fetchSpreadsheetLeaderboard(sheetUrl, "TURBO RACE");
       const foundLeaderboard = leaderboardRows.find(
         (r) =>
           (r.user_id && r.user_id.toLowerCase().includes(match.username.toLowerCase())) ||

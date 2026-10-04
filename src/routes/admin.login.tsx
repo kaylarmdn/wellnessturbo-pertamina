@@ -53,15 +53,15 @@ function AdminLoginPage() {
       const user = await authenticateSpreadsheetUser(username, password, sheetUrl || "");
       if (!user) {
         toast.error("Username atau Password salah! Periksa data Anda di sheet USER.");
+        setSaving(false);
         return;
       }
       setStoredUserId(user.id);
       toast.success(`Selamat datang kembali, ${user.name}!`);
-      navigate({ to: "/beranda" });
+      window.location.href = "/beranda";
     } catch (err) {
       console.error(err);
       toast.error("Gagal melakukan verifikasi login. Silakan coba lagi.");
-    } finally {
       setSaving(false);
     }
   };
@@ -77,17 +77,12 @@ function AdminLoginPage() {
     const cleanPass = adminPassword.trim();
 
     if (cleanEmail === "medicalmorv@gmail.com" && cleanPass === "MEDADMINkyl2026") {
-      setTimeout(() => {
-        setStoredAdmin(true);
-        toast.success("Login Admin berhasil! Selamat datang di Panel Medical Admin.");
-        navigate({ to: "/admin" });
-        setSaving(false);
-      }, 400);
+      setStoredAdmin(true);
+      toast.success("Login Admin berhasil! Selamat datang di Panel Medical Admin.");
+      window.location.href = "/admin";
     } else {
-      setTimeout(() => {
-        toast.error("Email atau Password Admin salah. Silakan periksa kembali.");
-        setSaving(false);
-      }, 400);
+      toast.error("Email atau Password Admin salah. Silakan periksa kembali.");
+      setSaving(false);
     }
   };
 
