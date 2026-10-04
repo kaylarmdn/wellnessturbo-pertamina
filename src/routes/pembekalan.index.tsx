@@ -156,17 +156,6 @@ function PembekalanList() {
                         Terkunci: Tonton "{prevMod.title}" & tuntaskan Quiz-nya terlebih dahulu.
                       </p>
                     )}
-
-                    {/* Progress Bar for Unlocked Module */}
-                    {isUnlocked && !isQuizCompleted && (
-                      <div className="pt-2 max-w-md space-y-1">
-                        <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500">
-                          <span>Progres Video</span>
-                          <span className="font-bold text-indigo-600">{videoPct}%</span>
-                        </div>
-                        <Progress value={videoPct} className="h-2 rounded-full bg-slate-200/80 [&>div]:bg-gradient-to-r [&>div]:from-sky-500 [&>div]:to-indigo-600" />
-                      </div>
-                    )}
                   </div>
                 </div>
 
