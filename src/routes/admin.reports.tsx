@@ -399,7 +399,9 @@ function AdminReportsPage() {
               return matchSearch && matchVideo && matchQuiz;
             });
 
-            const completedVideoCount = moduleRecords.filter((v) => v.video_completed).length;
+            const completedVideoCount = moduleRecords.filter(
+              (v) => v.video_completed || v.quiz_completed || (v.video_progress_percentage && v.video_progress_percentage >= 100)
+            ).length;
             const completedQuizCount = moduleRecords.filter((v) => v.quiz_completed).length;
             const isExpanded = expandedModuleId === mod.id;
 

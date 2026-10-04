@@ -11,6 +11,7 @@ import {
   Info,
   Lock,
   Play,
+  PlayCircle,
   Sparkles,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -205,10 +206,15 @@ function PembekalanDetailPage() {
     [user, id, queryClient],
   );
 
+  const quizRef = useRef<HTMLDivElement>(null);
+
   const handleMarkVideoComplete = () => {
     setPercent(100);
     setVideoCompleted(true);
     void persist(100, true);
+    setTimeout(() => {
+      quizRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 200);
   };
 
   const handleProgressUpdate = (cur: number, dur: number) => {
@@ -314,7 +320,7 @@ function PembekalanDetailPage() {
       </div>
 
       {/* Video Player Container */}
-      <div className="relative overflow-hidden rounded-3xl bg-slate-950 shadow-2xl border-2 border-white/80">
+      <div className="relative overflow-hidden rounded-3xl bg-slate-950 shadow-2xl border-2 border-indigo-300/40 ring-4 ring-indigo-500/10">
         {youtubeId ? (
           <YouTubePlayer
             videoId={youtubeId}
@@ -323,10 +329,10 @@ function PembekalanDetailPage() {
             completed={videoCompleted}
           />
         ) : googleDriveUrl ? (
-          <div className="relative aspect-video w-full">
+          <div className="relative aspect-video w-full bg-slate-950 overflow-hidden">
             <iframe
               src={googleDriveUrl}
-              className="h-full w-full border-0"
+              className="h-full w-full border-0 rounded-2xl"
               allow="autoplay; encrypted-media; fullscreen"
               allowFullScreen
             />
@@ -365,53 +371,62 @@ function PembekalanDetailPage() {
         </div>
       )}
 
-      {/* Real-time Video Progress Bar */}
-      <div className="glass-panel rounded-3xl p-5 border border-white/60 space-y-3">
-        <div className="flex items-center justify-between text-sm font-bold">
-          <span className="text-slate-800">Progress Menonton Video</span>
-          <div className="flex items-center gap-2">
+      {/* Real-time Video Progress Bar & Interactive Controls */}
+      <div className="glass-panel rounded-3xl p-6 border border-white/80 space-y-4 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <span className="text-sm font-black text-slate-800 flex items-center gap-2">
+              <PlayCircle className="h-4.5 w-4.5 text-indigo-600" /> Progress Menonton Video
+            </span>
+            <p className="text-xs text-slate-500 font-medium mt-0.5">
+              Progres tontonan tersambung otomatis dan membuka Quiz saat mencapai 100%.
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
             {duration > 0 && (
-              <span className="text-xs text-slate-500 font-mono">
-                ({formatTime(currentTime)} / {formatTime(duration)})
+              <span className="text-xs text-slate-500 font-mono bg-slate-100/80 px-2.5 py-1 rounded-xl">
+                {formatTime(currentTime)} / {formatTime(duration)}
               </span>
             )}
-            <span className="text-indigo-600 font-black text-lg">{percent}%</span>
+            <span className="text-indigo-600 font-black text-xl">{percent}%</span>
           </div>
         </div>
-        <Progress value={percent} className="h-3 rounded-full bg-slate-200/80 [&>div]:bg-gradient-to-r [&>div]:from-sky-500 [&>div]:to-indigo-600" />
+
+        <Progress value={percent} className="h-3.5 rounded-full bg-slate-100 [&>div]:bg-gradient-to-r [&>div]:from-sky-500 [&>div]:via-indigo-600 [&>div]:to-emerald-500 transition-all duration-300" />
+
+        {!videoCompleted && percent < 100 ? (
+          <div className="pt-3 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-100">
+            <p className="text-xs text-slate-600 font-medium flex items-center gap-1.5">
+              <Info className="h-4 w-4 text-sky-600 shrink-0" />
+              Selesaikan tontonan video di atas untuk membuka Quiz.
+            </p>
+            <Button
+              type="button"
+              onClick={handleMarkVideoComplete}
+              className="w-full sm:w-auto rounded-2xl text-xs font-bold bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:brightness-110 shadow-md gap-2 py-2.5 px-5 shrink-0"
+            >
+              <CheckCircle2 className="h-4 w-4" /> Tandai Video Selesai & Lanjut ke Quiz
+            </Button>
+          </div>
+        ) : (
+          <div className="pt-3 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-100">
+            <div className="flex items-center gap-2 text-emerald-800 text-xs font-bold">
+              <CheckCircle2 className="h-4 w-4 text-emerald-600" /> Video Selesai 100%. Quiz telah terbuka!
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => quizRef.current?.scrollIntoView({ behavior: "smooth" })}
+              className="rounded-2xl text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm gap-1.5"
+            >
+              Lanjut Kerjakan Quiz 👇
+            </Button>
+          </div>
+        )}
       </div>
 
-      {/* Video Completed Status Notice */}
-      {videoCompleted || percent >= 100 ? (
-        <div className="glass-panel rounded-3xl border border-emerald-300/60 bg-emerald-500/10 p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div>
-            <p className="flex items-center gap-2 font-bold text-emerald-800 text-base">
-              <CheckCircle2 className="h-5 w-5 text-emerald-600" /> Video Pembekalan Selesai (100%)
-            </p>
-            <p className="mt-1 text-xs text-emerald-900/80 font-medium">
-              Silakan tuntaskan Quiz Pembekalan di bawah untuk menyelesaikan modul ini secara penuh!
-            </p>
-          </div>
-          <Button
-            type="button"
-            size="sm"
-            onClick={handleMarkVideoComplete}
-            className="rounded-2xl text-xs font-bold shrink-0 bg-emerald-600 text-white hover:bg-emerald-700 shadow-md border-0 gap-1.5"
-          >
-            <CheckCircle2 className="h-4 w-4" /> Video Selesai
-          </Button>
-        </div>
-      ) : (
-        <div className="flex items-start gap-3 rounded-3xl border border-sky-300/40 bg-sky-500/10 p-5 backdrop-blur-md">
-          <Info className="mt-0.5 h-5 w-5 shrink-0 text-sky-600" />
-          <p className="text-xs sm:text-sm text-slate-700 font-medium leading-relaxed">
-            Silakan tonton video hingga 100% untuk membuka Quiz Pembekalan. Video <b>tidak dapat dilewati (di-skip)</b>, dan progres Anda tersimpan otomatis secara real-time.
-          </p>
-        </div>
-      )}
-
       {/* Quiz Section */}
-      <div className="glass-panel rounded-3xl p-6 sm:p-8 border border-white/80 space-y-6">
+      <div ref={quizRef} id="quiz-section" className="glass-panel rounded-3xl p-6 sm:p-8 border border-white/80 space-y-6">
         <div className="flex items-center justify-between border-b border-slate-200/60 pb-4">
           <div className="flex items-center gap-3">
             <div className="grid h-10 w-10 place-items-center rounded-2xl bg-indigo-500/15 text-indigo-600 font-bold">
