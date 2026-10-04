@@ -68,9 +68,6 @@ function PembekalanList() {
           <h1 className="text-2xl font-black text-slate-800 sm:text-3xl flex items-center gap-2">
             <GraduationCap className="h-8 w-8 text-indigo-600" /> Pembekalan Pekerja
           </h1>
-          <p className="text-sm sm:text-base text-slate-600 font-medium leading-relaxed">
-            Tonton setiap modul pembekalan hingga 100% (video tidak dapat dilewati), kemudian tuntaskan quiz-nya untuk membuka modul pembekalan berikutnya!
-          </p>
         </div>
       </div>
 
