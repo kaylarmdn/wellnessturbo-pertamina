@@ -10,6 +10,8 @@ import {
   HelpCircle,
   Info,
   Lock,
+  Pause,
+  PauseCircle,
   Play,
   PlayCircle,
   Sparkles,
@@ -207,15 +209,45 @@ function PembekalanDetailPage() {
   );
 
   const quizRef = useRef<HTMLDivElement>(null);
+  const [drivePlaying, setDrivePlaying] = useState(false);
 
-  const handleMarkVideoComplete = () => {
+  const handleMarkVideoComplete = useCallback(() => {
     setPercent(100);
     setVideoCompleted(true);
+    setCurrentTime(1117);
+    setDuration(1117);
     void persist(100, true);
     setTimeout(() => {
       quizRef.current?.scrollIntoView({ behavior: "smooth" });
     }, 200);
-  };
+  }, [persist]);
+
+  useEffect(() => {
+    let interval: any;
+    if (drivePlaying && !videoCompleted) {
+      interval = setInterval(() => {
+        setCurrentTime((prev) => {
+          const totalDur = duration > 0 ? duration : 1117;
+          const next = prev + 1;
+          const pct = Math.min(100, Math.floor((next / totalDur) * 100));
+          setPercent(pct);
+          if (pct >= 99 || next >= totalDur) {
+            setDrivePlaying(false);
+            handleMarkVideoComplete();
+            return totalDur;
+          }
+          if (pct - lastSaved.current >= 5) {
+            lastSaved.current = pct;
+            void persist(pct, false);
+          }
+          return next;
+        });
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [drivePlaying, videoCompleted, duration, persist, handleMarkVideoComplete]);
 
   const handleProgressUpdate = (cur: number, dur: number) => {
     setCurrentTime(cur);
@@ -379,15 +411,13 @@ function PembekalanDetailPage() {
               <PlayCircle className="h-4.5 w-4.5 text-indigo-600" /> Progress Menonton Video
             </span>
             <p className="text-xs text-slate-500 font-medium mt-0.5">
-              Progres tontonan tersambung otomatis dan membuka Quiz saat mencapai 100%.
+              Progres tontonan mengikuti menit video ({formatTime(currentTime)} / {formatTime(duration || 1117)}).
             </p>
           </div>
           <div className="flex items-center gap-3">
-            {duration > 0 && (
-              <span className="text-xs text-slate-500 font-mono bg-slate-100/80 px-2.5 py-1 rounded-xl">
-                {formatTime(currentTime)} / {formatTime(duration)}
-              </span>
-            )}
+            <span className="text-xs font-mono bg-indigo-50 border border-indigo-100 text-indigo-700 px-3 py-1 rounded-xl font-bold">
+              {formatTime(currentTime)} / {formatTime(duration || 1117)}
+            </span>
             <span className="text-indigo-600 font-black text-xl">{percent}%</span>
           </div>
         </div>
@@ -396,16 +426,26 @@ function PembekalanDetailPage() {
 
         {!videoCompleted && percent < 100 ? (
           <div className="pt-3 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-100">
-            <p className="text-xs text-slate-600 font-medium flex items-center gap-1.5">
-              <Info className="h-4 w-4 text-sky-600 shrink-0" />
-              Selesaikan tontonan video di atas untuk membuka Quiz.
-            </p>
+            <div className="flex items-center gap-2">
+              {googleDriveUrl && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setDrivePlaying(!drivePlaying)}
+                  className="rounded-2xl text-xs font-bold border-indigo-200 text-indigo-700 bg-indigo-50/60 hover:bg-indigo-100 gap-1.5"
+                >
+                  {drivePlaying ? <PauseCircle className="h-4 w-4 text-indigo-600" /> : <PlayCircle className="h-4 w-4 text-indigo-600" />}
+                  {drivePlaying ? "Jeda Sinkron Waktu" : "Mulai Sinkron Waktu Nonton"}
+                </Button>
+              )}
+            </div>
             <Button
               type="button"
               onClick={handleMarkVideoComplete}
               className="w-full sm:w-auto rounded-2xl text-xs font-bold bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:brightness-110 shadow-md gap-2 py-2.5 px-5 shrink-0"
             >
-              <CheckCircle2 className="h-4 w-4" /> Tandai Video Selesai & Lanjut ke Quiz
+              <CheckCircle2 className="h-4 w-4" /> Tandai Video Selesai (100%) & Lanjut ke Quiz
             </Button>
           </div>
         ) : (

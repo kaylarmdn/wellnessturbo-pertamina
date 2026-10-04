@@ -317,24 +317,57 @@ const INITIAL_PEMBEKALAN_QUESTIONS: PembekalanQuizQuestion[] = [
   {
     id: "q-pem-1-1",
     module_id: "pem-1",
-    question: "Apa tujuan utama dari program Wellness & Kebugaran Pekerja?",
-    option_a: "Menjaga kesehatan, stamina, dan produktivitas kerja",
-    option_b: "Mengurangi jam istirahat",
-    option_c: "Menambah beban pekerjaan harian",
-    option_d: "Menghindari pemeriksaan medis rutin",
+    question: "Apa perbedaan antara fixed mindset dan growth mindset ?",
+    option_a: "Fixed mindset berfokus pada pembuktian kemampuan sedangkan growth mindset berfokus pada perkembangan dan proses belajar",
+    option_b: "Fixed mindset selalu terbuka terhadap perubahan, sedangkan growth mindset menghindari tantangan",
+    option_c: "Fixed mindset berfokus pada proses belajar, sedangkan growth mindset berfokus pada hasil akhir",
+    option_d: "Fixed mindset dan growth mindset memiliki pandangan yang sama terhadap kemampuan seseorang",
     correct_answer: "A",
     question_order: 1,
   },
   {
     id: "q-pem-1-2",
     module_id: "pem-1",
-    question: "Manakah komponen penting dalam menjaga energi harian?",
-    option_a: "Pola makan seimbang dan cairan yang cukup",
-    option_b: "Mengkonsumsi kafein berlebihan",
-    option_c: "Bekerja tanpa henti",
-    option_d: "Tidur kurang dari 4 jam",
-    correct_answer: "A",
+    question: "Apa yang dapat menjadi hambatan bagi seseorang yang memiliki fixed mindset ketika ingin berubah?",
+    option_a: "Motivasi yang semakin meningkat",
+    option_b: "Keinginan untuk mencoba tantangan baru",
+    option_c: "Mental block",
+    option_d: "Kemampuan beradaptasi yang semakin baik",
+    correct_answer: "C",
     question_order: 2,
+  },
+  {
+    id: "q-pem-1-3",
+    module_id: "pem-1",
+    question: "Apa yang dimaksud dengan mental block ?",
+    option_a: "Kondisi ketika pikiran atau keyakinan seseorang menjadi hambatan dalam melakukan perubahan atau mencapai tujuan",
+    option_b: "Kondisi ketika seseorang memiliki motivasi tinggi untuk mencapai tujuan",
+    option_c: "Kebiasaan seseorang dalam menetapkan target dan mengevaluasi hasil",
+    option_d: "Kemampuan seseorang untuk beradaptasi dengan perubahan secara cepat",
+    correct_answer: "A",
+    question_order: 3,
+  },
+  {
+    id: "q-pem-1-4",
+    module_id: "pem-1",
+    question: "Apa penyebab fixed mindset pada penurunan berat badan ?",
+    option_a: "Menerima tantangan sebagai kesempatan untuk berkembang",
+    option_b: "Fokus pada proses dan melakukan perbaikan secara bertahap",
+    option_c: "Bersedia mencoba berbagai strategi dan belajar dari pengalaman",
+    option_d: "Menganggap kemampuan untuk menurunkan berat badan sudah ditentukan dan sulit diubah",
+    correct_answer: "D",
+    question_order: 4,
+  },
+  {
+    id: "q-pem-1-5",
+    module_id: "pem-1",
+    question: "Sebutkan cara agar terhindar dari mental block/ menuju ke growth mindset ?",
+    option_a: "Sadari fixed mindset voice",
+    option_b: "Ubah cara memaknai kegagaln",
+    option_c: "Fokus pada proses, bukan hanya hasil",
+    option_d: "Semua jawaban benar",
+    correct_answer: "D",
+    question_order: 5,
   },
   {
     id: "q-pem-2-1",
@@ -449,9 +482,17 @@ export function getStoredPembekalanQuestions(moduleId?: string): PembekalanQuizQ
   try {
     const raw = localStorage.getItem(STORAGE_PEMBEKALAN_QUESTIONS_KEY);
     let list: PembekalanQuizQuestion[] = raw ? JSON.parse(raw) : INITIAL_PEMBEKALAN_QUESTIONS;
-    if (!raw) {
+    
+    // Always update pem-1 questions with latest 5 questions from Ibu Meutia
+    const pem1Questions = INITIAL_PEMBEKALAN_QUESTIONS.filter((q) => q.module_id === "pem-1");
+    const existingPem1Question = list.find((q) => q.module_id === "pem-1");
+    if (!existingPem1Question || existingPem1Question.question.includes("tujuan utama") || list.filter((q) => q.module_id === "pem-1").length < 5) {
+      list = list.filter((q) => q.module_id !== "pem-1").concat(pem1Questions);
+      localStorage.setItem(STORAGE_PEMBEKALAN_QUESTIONS_KEY, JSON.stringify(list));
+    } else if (!raw) {
       localStorage.setItem(STORAGE_PEMBEKALAN_QUESTIONS_KEY, JSON.stringify(INITIAL_PEMBEKALAN_QUESTIONS));
     }
+
     if (moduleId) list = list.filter((q) => q.module_id === moduleId);
     return list.sort((a, b) => a.question_order - b.question_order);
   } catch {
