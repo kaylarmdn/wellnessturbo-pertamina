@@ -499,7 +499,7 @@ function AdminRewardPage() {
                     <Input
                       value={contact.phone}
                       onChange={(e) => setContact({ ...contact, phone: e.target.value })}
-                      placeholder="e.g. +62 812-3456-7890"
+                      placeholder="e.g. +62 878-5269-9443"
                       className="rounded-2xl border-slate-200 text-xs font-semibold"
                       required
                     />
@@ -510,7 +510,7 @@ function AdminRewardPage() {
                     <Input
                       value={contact.email}
                       onChange={(e) => setContact({ ...contact, email: e.target.value })}
-                      placeholder="e.g. wellness@company.com"
+                      placeholder="e.g. medicalmorv@gmail.com"
                       className="rounded-2xl border-slate-200 text-xs font-semibold"
                     />
                   </div>
@@ -521,7 +521,7 @@ function AdminRewardPage() {
                   <Input
                     value={contact.location}
                     onChange={(e) => setContact({ ...contact, location: e.target.value })}
-                    placeholder="e.g. Gedung Utama Lt. 2 - Ruang Medical Center"
+                    placeholder="e.g. Lt.12 - Ruang Medical"
                     className="rounded-2xl border-slate-200 text-xs font-semibold"
                     required
                   />
@@ -532,7 +532,7 @@ function AdminRewardPage() {
                   <Textarea
                     value={contact.note || ""}
                     onChange={(e) => setContact({ ...contact, note: e.target.value })}
-                    placeholder="e.g. Layanan klaim buka setiap hari kerja pukul 09:00 - 16:00 WIB."
+                    placeholder="e.g. Layanan klaim buka setiap hari pada jam kerja pukul 07.30-15.30 WIB"
                     className="rounded-2xl border-slate-200 text-xs font-medium min-h-[90px]"
                   />
                 </div>

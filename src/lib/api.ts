@@ -2769,10 +2769,10 @@ const INITIAL_REWARDS: RewardItem[] = [
 const INITIAL_CONTACT_PERSON: RewardContactPerson = {
   name: "Tim Medical & Wellness Admin",
   role: "PIC Reward & Klaim Hadiah",
-  phone: "+62 812-3456-7890",
-  email: "wellness@company.com",
-  location: "Gedung Utama Lt. 2 - Ruang Medical Center",
-  note: "Layanan klaim buka setiap hari kerja pukul 09:00 - 16:00 WIB. Tunjukkan status klaim pada aplikasi saat pengambilan hadiah.",
+  phone: "+62 878-5269-9443",
+  email: "medicalmorv@gmail.com",
+  location: "Lt.12 - Ruang Medical",
+  note: "Layanan klaim buka setiap hari pada jam kerja pukul 07.30-15.30 WIB",
 };
 
 export function getStoredRewards(): RewardItem[] {
@@ -2969,7 +2969,20 @@ export function getStoredContactPerson(): RewardContactPerson {
       localStorage.setItem(STORAGE_CONTACT_KEY, JSON.stringify(INITIAL_CONTACT_PERSON));
       return INITIAL_CONTACT_PERSON;
     }
-    return JSON.parse(raw);
+    const parsed: RewardContactPerson = JSON.parse(raw);
+    if (
+      !parsed.phone || parsed.phone === "+62 812-3456-7890" ||
+      !parsed.email || parsed.email === "wellness@company.com" ||
+      !parsed.location || parsed.location.includes("Gedung Utama") ||
+      !parsed.note || parsed.note.includes("09:00 - 16:00")
+    ) {
+      parsed.phone = "+62 878-5269-9443";
+      parsed.email = "medicalmorv@gmail.com";
+      parsed.location = "Lt.12 - Ruang Medical";
+      parsed.note = "Layanan klaim buka setiap hari pada jam kerja pukul 07.30-15.30 WIB";
+      localStorage.setItem(STORAGE_CONTACT_KEY, JSON.stringify(parsed));
+    }
+    return parsed;
   } catch {
     return INITIAL_CONTACT_PERSON;
   }
