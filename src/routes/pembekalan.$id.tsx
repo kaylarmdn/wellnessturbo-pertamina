@@ -193,20 +193,14 @@ function PembekalanDetailPage() {
 
   useEffect(() => {
     if (progressQuery.data) {
-      setPercent(progressQuery.data.video_progress_percentage);
       setVideoCompleted(progressQuery.data.video_completed);
-      const totalDur = duration > 0 ? duration : 1117;
       if (progressQuery.data.video_completed) {
         setPercent(100);
-        setCurrentTime(totalDur);
-        setDrivePlaying(false);
       } else {
-        const initialTime = Math.floor((progressQuery.data.video_progress_percentage / 100) * totalDur);
-        setCurrentTime((prev) => (prev === 0 ? initialTime : prev));
-        setDrivePlaying(true);
+        setPercent(progressQuery.data.video_progress_percentage || 0);
       }
     }
-  }, [progressQuery.data, duration]);
+  }, [progressQuery.data]);
 
   const persist = useCallback(
     async (pct: number, done: boolean) => {
@@ -218,45 +212,16 @@ function PembekalanDetailPage() {
   );
 
   const quizRef = useRef<HTMLDivElement>(null);
-  const [drivePlaying, setDrivePlaying] = useState(false);
 
   const handleMarkVideoComplete = useCallback(() => {
     setPercent(100);
     setVideoCompleted(true);
-    setCurrentTime(1117);
-    setDuration(1117);
     void persist(100, true);
+    toast.success("✅ Video berhasil ditandai selesai. Quiz telah terbuka!");
     setTimeout(() => {
       quizRef.current?.scrollIntoView({ behavior: "smooth" });
     }, 200);
   }, [persist]);
-
-  useEffect(() => {
-    let interval: any;
-    if (drivePlaying && !videoCompleted) {
-      interval = setInterval(() => {
-        setCurrentTime((prev) => {
-          const totalDur = duration > 0 ? duration : 1117;
-          const next = prev + 1;
-          const pct = Math.min(100, Math.floor((next / totalDur) * 100));
-          setPercent(pct);
-          if (pct >= 99 || next >= totalDur) {
-            setDrivePlaying(false);
-            handleMarkVideoComplete();
-            return totalDur;
-          }
-          if (pct - lastSaved.current >= 5) {
-            lastSaved.current = pct;
-            void persist(pct, false);
-          }
-          return next;
-        });
-      }, 1000);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [drivePlaying, videoCompleted, duration, persist, handleMarkVideoComplete]);
 
   const handleProgressUpdate = (cur: number, dur: number) => {
     setCurrentTime(cur);
@@ -482,14 +447,14 @@ function PembekalanDetailPage() {
         </div>
 
         {/* State 1: Video is NOT completed yet */}
-        {!videoCompleted && percent < 100 ? (
+        {!videoCompleted ? (
           <div className="text-center py-8 space-y-3 bg-slate-50/80 rounded-2xl border border-slate-200/60 p-6">
-            <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-slate-200 text-slate-500">
+            <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-amber-100 text-amber-600">
               <Lock className="h-6 w-6" />
             </div>
             <h3 className="font-bold text-slate-800 text-base">Quiz Terkunci</h3>
             <p className="text-xs text-slate-600 font-medium max-w-sm mx-auto">
-              Selesaikan tontonan video pembekalan di atas hingga 100% terlebih dahulu untuk membuka quiz ini.
+              Silakan tonton video di atas, kemudian tekan tombol <span className="font-bold text-indigo-600">"Tandai Video Selesai & Lanjut ke Quiz"</span> untuk membuka quiz ini.
             </p>
           </div>
         ) : isQuizCompleted ? (
