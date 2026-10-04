@@ -348,7 +348,9 @@ function PembekalanDetailPage() {
           Modul Pembekalan #{mod.module_order}
         </Badge>
         <h1 className="text-2xl font-black text-slate-800 sm:text-3xl">{mod.title}</h1>
-        <p className="text-sm sm:text-base text-slate-600 leading-relaxed font-medium">{mod.description}</p>
+        {mod.description ? (
+          <p className="text-sm sm:text-base text-slate-600 leading-relaxed font-medium">{mod.description}</p>
+        ) : null}
       </div>
 
       {/* Video Player Container */}

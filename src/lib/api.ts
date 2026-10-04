@@ -283,8 +283,8 @@ const STORAGE_PEMBEKALAN_PROGRESS_KEY = "wt_pembekalan_progress_v1";
 const INITIAL_PEMBEKALAN_MODULES: PembekalanModule[] = [
   {
     id: "pem-1",
-    title: "Pembekalan 1: Pengenalan Program Wellness & Kebugaran",
-    description: "Materi dasar mengenai pentingnya menjaga kebugaran kerja, nutrisi seimbang, serta pengenalan fasilitas medis perusahaan.",
+    title: "Pembekalan 1: Materi ibu Meutia",
+    description: "",
     video_url: "https://drive.google.com/file/d/191p6U_f30n0EvamWkDADKkYgBccNLLkA/view?usp=sharing",
     module_order: 1,
     status: "published",
@@ -294,7 +294,7 @@ const INITIAL_PEMBEKALAN_MODULES: PembekalanModule[] = [
   {
     id: "pem-2",
     title: "Pembekalan 2: Materi dr. Liona, Sp.GK",
-    description: "Modul pelatihan kesehatan dan ilmu gizi mengenai weight loss, hormonal response, obesitas, dan yo-yo effect.",
+    description: "",
     video_url: "https://drive.google.com/file/d/1ZfqG9CzrtWba4gi5rrjURHcCtQRhYwJc/view?usp=sharing",
     module_order: 2,
     status: "published",
@@ -304,7 +304,7 @@ const INITIAL_PEMBEKALAN_MODULES: PembekalanModule[] = [
   {
     id: "pem-3",
     title: "Pembekalan 3: Materi dr. Nanang",
-    description: "Modul panduan strategi olahraga aman, denyut nadi maksimal, serta manfaat olahraga bagi pekerja hipertensi & diabetes.",
+    description: "",
     video_url: "https://drive.google.com/file/d/1d59lrpYa3PC17OILLZ3MKJVQJ0dFmhDo/view?usp=sharing",
     module_order: 3,
     status: "published",
@@ -492,18 +492,28 @@ export function getStoredPembekalanModules(): PembekalanModule[] {
     }
     const parsed: PembekalanModule[] = JSON.parse(raw);
     const pem1 = parsed.find((m) => m.id === "pem-1" || m.module_order === 1);
-    if (pem1 && (pem1.video_url.includes("dQw4w9WgXcQ") || !pem1.video_url)) {
-      pem1.video_url = "https://drive.google.com/file/d/191p6U_f30n0EvamWkDADKkYgBccNLLkA/view?usp=sharing";
+    if (pem1) {
+      pem1.title = "Pembekalan 1: Materi ibu Meutia";
+      pem1.description = "";
+      if (pem1.video_url.includes("dQw4w9WgXcQ") || !pem1.video_url) {
+        pem1.video_url = "https://drive.google.com/file/d/191p6U_f30n0EvamWkDADKkYgBccNLLkA/view?usp=sharing";
+      }
     }
     const pem2 = parsed.find((m) => m.id === "pem-2" || m.module_order === 2);
-    if (pem2 && (pem2.video_url.includes("dQw4w9WgXcQ") || !pem2.video_url)) {
-      pem2.video_url = "https://drive.google.com/file/d/1ZfqG9CzrtWba4gi5rrjURHcCtQRhYwJc/view?usp=sharing";
+    if (pem2) {
       pem2.title = "Pembekalan 2: Materi dr. Liona, Sp.GK";
+      pem2.description = "";
+      if (pem2.video_url.includes("dQw4w9WgXcQ") || !pem2.video_url) {
+        pem2.video_url = "https://drive.google.com/file/d/1ZfqG9CzrtWba4gi5rrjURHcCtQRhYwJc/view?usp=sharing";
+      }
     }
     const pem3 = parsed.find((m) => m.id === "pem-3" || m.module_order === 3);
-    if (pem3 && (pem3.video_url.includes("dQw4w9WgXcQ") || !pem3.video_url)) {
-      pem3.video_url = "https://drive.google.com/file/d/1d59lrpYa3PC17OILLZ3MKJVQJ0dFmhDo/view?usp=sharing";
+    if (pem3) {
       pem3.title = "Pembekalan 3: Materi dr. Nanang";
+      pem3.description = "";
+      if (pem3.video_url.includes("dQw4w9WgXcQ") || !pem3.video_url) {
+        pem3.video_url = "https://drive.google.com/file/d/1d59lrpYa3PC17OILLZ3MKJVQJ0dFmhDo/view?usp=sharing";
+      }
     }
     localStorage.setItem(STORAGE_PEMBEKALAN_MODULES_KEY, JSON.stringify(parsed));
     return parsed;

@@ -146,9 +146,11 @@ function PembekalanList() {
                     </div>
 
                     <h2 className="text-lg font-black text-slate-800 leading-snug">{mod.title}</h2>
-                    <p className="text-xs sm:text-sm text-slate-600 font-medium leading-relaxed">
-                      {mod.description}
-                    </p>
+                    {mod.description ? (
+                      <p className="text-xs sm:text-sm text-slate-600 font-medium leading-relaxed">
+                        {mod.description}
+                      </p>
+                    ) : null}
 
                     {/* Lock Warning Notice */}
                     {!isUnlocked && prevMod && (
