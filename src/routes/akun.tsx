@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Building2, IdCard, LogOut, Mail, MapPin, ShieldCheck } from "lucide-react";
+import { Building2, IdCard, LogOut, MapPin, ShieldCheck } from "lucide-react";
 import { RequireUser } from "@/components/RequireUser";
 import { Button } from "@/components/ui/button";
 import { branding } from "@/config/branding";
@@ -55,7 +55,6 @@ function AkunPage() {
     { icon: IdCard, label: "Nomor Pekerja", value: user.employee_number },
     { icon: MapPin, label: "Lokasi", value: user.location },
     { icon: Building2, label: "Fungsi", value: user.function },
-    { icon: Mail, label: "Email", value: user.email },
   ];
 
   return (
