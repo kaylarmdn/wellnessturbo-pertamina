@@ -213,7 +213,7 @@ function PembekalanDetailPage() {
     [user, id, queryClient],
   );
 
-  const [timerSeconds, setTimerSeconds] = useState(120);
+  const [timerSeconds, setTimerSeconds] = useState(600);
 
   useEffect(() => {
     let timer: any;
@@ -422,11 +422,11 @@ function PembekalanDetailPage() {
               <p className="text-xs text-slate-500 font-medium leading-relaxed">
                 {timerSeconds > 0 ? (
                   <span>
-                    Harap tonton video minimal selama <strong className="text-indigo-600 font-bold">2 menit</strong>. Tombol konfirmasi akan aktif setelah timer hitung mundur berakhir.
+                    Harap tonton video minimal selama <strong className="text-indigo-600 font-bold">10 menit</strong>. Tombol konfirmasi akan aktif setelah timer hitung mundur berakhir.
                   </span>
                 ) : (
                   <span>
-                    Timer 2 menit telah selesai! Silakan tekan tombol konfirmasi untuk membuka Quiz.
+                    Timer 10 menit telah selesai! Silakan tekan tombol konfirmasi untuk membuka Quiz.
                   </span>
                 )}
               </p>
@@ -524,8 +524,8 @@ function PembekalanDetailPage() {
             <h3 className="font-bold text-slate-800 text-base">Quiz Terkunci</h3>
             <p className="text-xs text-slate-600 font-medium max-w-sm mx-auto">
               {timerSeconds > 0
-                ? `Harap tonton video minimal selama 2 menit (sisa ${formatCountdown(timerSeconds)}). Setelah itu, tekan tombol "Tandai Video Selesai" untuk membuka quiz ini.`
-                : `Timer 2 menit telah selesai! Silakan tekan tombol "Tandai Video Selesai & Lanjut ke Quiz" di atas untuk membuka quiz ini.`}
+                ? `Harap tonton video minimal selama 10 menit (sisa ${formatCountdown(timerSeconds)}). Setelah itu, tekan tombol "Tandai Video Selesai" untuk membuka quiz ini.`
+                : `Timer 10 menit telah selesai! Silakan tekan tombol "Tandai Video Selesai & Lanjut ke Quiz" di atas untuk membuka quiz ini.`}
             </p>
           </div>
         ) : isQuizCompleted ? (
