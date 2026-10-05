@@ -680,83 +680,28 @@ export async function deletePembekalanQuizQuestion(id: string): Promise<void> {
   } catch { }
 }
 
-const INITIAL_PEMBEKALAN_PROGRESS: PembekalanProgress[] = [
-  {
-    id: "prog-demo-1",
-    user_id: "112233",
-    module_id: "pem-1",
-    video_progress_percentage: 100,
-    video_completed: true,
-    quiz_completed: true,
-    quiz_score: 100,
-    completed_at: "2026-09-28T10:15:00.000Z",
-    updated_at: "2026-09-28T10:15:00.000Z",
-  },
-  {
-    id: "prog-demo-2",
-    user_id: "223344",
-    module_id: "pem-1",
-    video_progress_percentage: 100,
-    video_completed: true,
-    quiz_completed: true,
-    quiz_score: 80,
-    completed_at: "2026-09-28T11:30:00.000Z",
-    updated_at: "2026-09-28T11:30:00.000Z",
-  },
-  {
-    id: "prog-demo-3",
-    user_id: "334455",
-    module_id: "pem-1",
-    video_progress_percentage: 65,
-    video_completed: false,
-    quiz_completed: false,
-    completed_at: null,
-    updated_at: "2026-09-29T08:20:00.000Z",
-  },
-  {
-    id: "prog-demo-4",
-    user_id: "445566",
-    module_id: "pem-1",
-    video_progress_percentage: 100,
-    video_completed: true,
-    quiz_completed: true,
-    quiz_score: 90,
-    completed_at: "2026-09-29T14:45:00.000Z",
-    updated_at: "2026-09-29T14:45:00.000Z",
-  },
-  {
-    id: "prog-demo-5",
-    user_id: "112233",
-    module_id: "pem-2",
-    video_progress_percentage: 100,
-    video_completed: true,
-    quiz_completed: true,
-    quiz_score: 100,
-    completed_at: "2026-09-29T16:00:00.000Z",
-    updated_at: "2026-09-29T16:00:00.000Z",
-  },
-  {
-    id: "prog-demo-6",
-    user_id: "223344",
-    module_id: "pem-2",
-    video_progress_percentage: 40,
-    video_completed: false,
-    quiz_completed: false,
-    completed_at: null,
-    updated_at: "2026-09-30T07:10:00.000Z",
-  },
-];
+const INITIAL_PEMBEKALAN_PROGRESS: PembekalanProgress[] = [];
 
 export function getStoredPembekalanProgressList(): PembekalanProgress[] {
   try {
     const raw = localStorage.getItem(STORAGE_PEMBEKALAN_PROGRESS_KEY);
     if (!raw) {
-      localStorage.setItem(STORAGE_PEMBEKALAN_PROGRESS_KEY, JSON.stringify(INITIAL_PEMBEKALAN_PROGRESS));
-      return INITIAL_PEMBEKALAN_PROGRESS;
+      localStorage.setItem(STORAGE_PEMBEKALAN_PROGRESS_KEY, JSON.stringify([]));
+      return [];
     }
-    return JSON.parse(raw);
+    const parsed: PembekalanProgress[] = JSON.parse(raw);
+    const sanitized = parsed.filter(
+      (p) =>
+        p &&
+        !p.id.startsWith("prog-demo-") &&
+        !["112233", "223344", "334455", "445566"].includes(p.user_id),
+    );
+    if (sanitized.length !== parsed.length) {
+      localStorage.setItem(STORAGE_PEMBEKALAN_PROGRESS_KEY, JSON.stringify(sanitized));
+    }
+    return sanitized;
   } catch {
-    return INITIAL_PEMBEKALAN_PROGRESS;
+    return [];
   }
 }
 
