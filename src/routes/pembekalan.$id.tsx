@@ -167,6 +167,7 @@ function PembekalanDetailPage() {
   const { user } = useCurrentUser();
   const queryClient = useQueryClient();
   const videoRef = useRef<HTMLVideoElement>(null);
+  const quizRef = useRef<HTMLDivElement>(null);
   const maxWatched = useRef(0);
   const lastSaved = useRef(0);
 
@@ -312,8 +313,19 @@ function PembekalanDetailPage() {
     }
   };
 
-  if (!modQuery.data) {
+  if (modQuery.isLoading) {
     return <p className="text-sm text-slate-500 p-8 text-center font-medium">Memuat materi pembekalan…</p>;
+  }
+
+  if (!modQuery.data) {
+    return (
+      <div className="text-center py-12 space-y-4">
+        <p className="text-base font-bold text-slate-700">Modul pembekalan tidak ditemukan atau tidak tersedia.</p>
+        <Button asChild variant="outline" className="rounded-xl font-bold text-xs">
+          <Link to="/pembekalan">← Kembali ke Daftar Pembekalan</Link>
+        </Button>
+      </div>
+    );
   }
 
   const mod = modQuery.data;
