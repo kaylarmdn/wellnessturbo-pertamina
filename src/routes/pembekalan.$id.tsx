@@ -412,17 +412,17 @@ function PembekalanDetailPage() {
 
       {/* Konfirmasi Tonton Video & Akses Quiz */}
       {!videoCompleted ? (
-        <div className="glass-panel rounded-3xl p-6 border border-indigo-100/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-indigo-50 text-indigo-600 font-bold">
+        <div className="glass-panel rounded-3xl p-5 sm:p-6 border border-indigo-100/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+          <div className="flex items-start gap-3">
+            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-indigo-50 text-indigo-600 font-bold mt-0.5">
               <PlayCircle className="h-6 w-6" />
             </div>
-            <div>
-              <h3 className="text-sm font-bold text-slate-800">Status Menonton Video</h3>
-              <p className="text-xs text-slate-500 font-medium">
+            <div className="space-y-1">
+              <h3 className="text-sm sm:text-base font-extrabold text-slate-800">Status Menonton Video</h3>
+              <p className="text-xs text-slate-500 font-medium leading-relaxed">
                 {timerSeconds > 0 ? (
                   <span>
-                    Harap tonton video minimal selama <strong className="text-indigo-600">2 menit</strong>. Tombol konfirmasi akan aktif setelah timer hitung mundur berakhir.
+                    Harap tonton video minimal selama <strong className="text-indigo-600 font-bold">2 menit</strong>. Tombol konfirmasi akan aktif setelah timer hitung mundur berakhir.
                   </span>
                 ) : (
                   <span>
@@ -436,38 +436,37 @@ function PembekalanDetailPage() {
             <Button
               type="button"
               disabled
-              className="w-full sm:w-auto rounded-2xl text-xs sm:text-sm font-bold bg-slate-200 text-slate-500 cursor-not-allowed border border-slate-300 gap-2 py-3 px-6 shrink-0"
+              className="w-full sm:w-auto rounded-2xl text-xs sm:text-sm font-bold bg-slate-100/90 text-slate-600 cursor-not-allowed border border-slate-200/90 gap-2 py-3 px-5 shrink-0 shadow-xs justify-center"
             >
-              <Clock className="h-4.5 w-4.5 text-slate-400 animate-spin" /> Tonton Video ({formatCountdown(timerSeconds)})
+              <Clock className="h-4 w-4 text-indigo-600 animate-spin" /> Tonton Video ({formatCountdown(timerSeconds)})
             </Button>
           ) : (
             <Button
               type="button"
               onClick={handleMarkVideoComplete}
-              className="w-full sm:w-auto rounded-2xl text-xs sm:text-sm font-bold bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:brightness-110 shadow-md gap-2 py-3 px-6 shrink-0 animate-pulse"
+              className="w-full sm:w-auto rounded-2xl text-xs sm:text-sm font-bold bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:brightness-110 shadow-md gap-2 py-3 px-5 shrink-0 animate-pulse justify-center"
             >
               <CheckCircle2 className="h-4.5 w-4.5" /> Tandai Video Selesai & Lanjut ke Quiz
             </Button>
           )}
         </div>
       ) : (
-        <div className="glass-panel rounded-3xl p-6 border border-emerald-200/80 bg-emerald-50/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-emerald-100 text-emerald-700 font-bold">
+        <div className="glass-panel rounded-3xl p-5 sm:p-6 border border-emerald-200/80 bg-emerald-50/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+          <div className="flex items-start gap-3">
+            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-emerald-100 text-emerald-700 font-bold mt-0.5">
               <CheckCircle2 className="h-6 w-6" />
             </div>
-            <div>
-              <h3 className="text-sm font-bold text-emerald-900">Video Selesai Nonton</h3>
-              <p className="text-xs text-emerald-700 font-medium">
+            <div className="space-y-1">
+              <h3 className="text-sm sm:text-base font-extrabold text-emerald-900">Video Selesai Nonton</h3>
+              <p className="text-xs text-emerald-700 font-medium leading-relaxed">
                 Anda telah menandai video ini selesai ditonton. Silakan tuntaskan Quiz di bawah ini.
               </p>
             </div>
           </div>
           <Button
             type="button"
-            size="sm"
             onClick={() => quizRef.current?.scrollIntoView({ behavior: "smooth" })}
-            className="w-full sm:w-auto rounded-2xl text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 shadow-md gap-1.5 py-2.5 px-5 shrink-0"
+            className="w-full sm:w-auto rounded-2xl text-xs sm:text-sm font-bold bg-emerald-600 text-white hover:bg-emerald-700 shadow-md gap-1.5 py-3 px-5 shrink-0 justify-center"
           >
             Lanjut Kerjakan Quiz 👇
           </Button>

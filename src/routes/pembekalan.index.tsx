@@ -159,11 +159,11 @@ function PembekalanList() {
                   </div>
                 </div>
 
-                <div className="shrink-0 flex items-center gap-2">
+                <div className="w-full sm:w-auto shrink-0 flex items-center justify-stretch sm:justify-end gap-2">
                   {isUnlocked ? (
                     <Button
                       asChild
-                      className={`rounded-2xl font-bold text-xs shadow-md ${
+                      className={`w-full sm:w-auto justify-center rounded-2xl font-bold text-xs shadow-md py-3 px-5 ${
                         isQuizCompleted
                           ? "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200"
                           : isVideoCompleted
@@ -188,7 +188,7 @@ function PembekalanList() {
                       </Link>
                     </Button>
                   ) : (
-                    <Button disabled className="rounded-2xl font-bold text-xs bg-slate-200/80 text-slate-500 border border-slate-300/50">
+                    <Button disabled className="w-full sm:w-auto justify-center rounded-2xl font-bold text-xs bg-slate-200/80 text-slate-500 border border-slate-300/50 py-3 px-5">
                       <Lock className="h-4 w-4 mr-1.5" /> Terkunci
                     </Button>
                   )}
