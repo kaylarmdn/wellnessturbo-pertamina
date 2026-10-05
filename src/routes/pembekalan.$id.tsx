@@ -450,6 +450,27 @@ function PembekalanDetailPage() {
             </Button>
           )}
         </div>
+      ) : isQuizCompleted ? (
+        <div className="glass-panel rounded-3xl p-5 sm:p-6 border border-emerald-200/80 bg-emerald-50/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+          <div className="flex items-start gap-3">
+            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-emerald-100 text-emerald-700 font-bold mt-0.5">
+              <CheckCircle2 className="h-6 w-6" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-sm sm:text-base font-extrabold text-emerald-900">Pembekalan #{mod.module_order} Telah Tuntas</h3>
+              <p className="text-xs text-emerald-700 font-medium leading-relaxed">
+                Anda telah merampungkan tontonan video dan lulus quiz untuk modul ini.
+              </p>
+            </div>
+          </div>
+          <Button
+            type="button"
+            onClick={() => quizRef.current?.scrollIntoView({ behavior: "smooth" })}
+            className="w-full sm:w-auto rounded-2xl text-xs sm:text-sm font-bold bg-emerald-600 text-white hover:bg-emerald-700 shadow-md gap-1.5 py-3 px-5 shrink-0 justify-center"
+          >
+            Lihat Hasil Quiz 👇
+          </Button>
+        </div>
       ) : (
         <div className="glass-panel rounded-3xl p-5 sm:p-6 border border-emerald-200/80 bg-emerald-50/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
           <div className="flex items-start gap-3">
@@ -474,21 +495,21 @@ function PembekalanDetailPage() {
       )}
 
       {/* Quiz Section */}
-      <div ref={quizRef} id="quiz-section" className="glass-panel rounded-3xl p-6 sm:p-8 border border-white/80 space-y-6">
-        <div className="flex items-center justify-between border-b border-slate-200/60 pb-4">
-          <div className="flex items-center gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-2xl bg-indigo-500/15 text-indigo-600 font-bold">
+      <div ref={quizRef} id="quiz-section" className="glass-panel rounded-3xl p-5 sm:p-8 border border-white/80 space-y-6">
+        <div className="flex items-center justify-between gap-3 border-b border-slate-200/60 pb-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-indigo-500/15 text-indigo-600 font-bold">
               <HelpCircle className="h-6 w-6" />
             </div>
-            <div>
-              <h2 className="text-xl font-black text-slate-800">Quiz Pembekalan #{mod.module_order}</h2>
-              <p className="text-xs text-slate-500 font-medium">
-                Tuntaskan quiz ini untuk membuka modul pembekalan berikutnya.
+            <div className="min-w-0">
+              <h2 className="text-lg sm:text-xl font-black text-slate-800 truncate">Quiz Pembekalan #{mod.module_order}</h2>
+              <p className="text-xs text-slate-500 font-medium truncate sm:whitespace-normal">
+                Tuntaskan quiz ini untuk membuka modul berikutnya.
               </p>
             </div>
           </div>
           {isQuizCompleted && (
-            <Badge className="bg-emerald-500/15 text-emerald-800 border border-emerald-300 font-bold text-xs px-3 py-1">
+            <Badge className="bg-emerald-500/15 text-emerald-800 border border-emerald-300 font-extrabold text-xs px-3 py-1.5 shrink-0 whitespace-nowrap">
               ✅ Tuntas
             </Badge>
           )}
@@ -510,21 +531,21 @@ function PembekalanDetailPage() {
         ) : isQuizCompleted ? (
           /* State 2: Quiz is ALREADY completed */
           <div className="space-y-6">
-            <div className="rounded-3xl border border-emerald-200 bg-gradient-to-r from-emerald-50 via-teal-50 to-cyan-50 p-6 shadow-sm space-y-3">
+            <div className="rounded-3xl border border-emerald-200/90 bg-gradient-to-r from-emerald-50 via-teal-50 to-cyan-50 p-5 sm:p-6 shadow-xs space-y-3">
               <div className="flex items-center gap-3">
-                <div className="grid h-12 w-12 place-items-center rounded-2xl bg-emerald-600 text-white font-black text-xl shadow-md">
+                <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-emerald-600 text-white font-black text-xl shadow-md">
                   🎉
                 </div>
-                <div>
-                  <h3 className="text-lg font-black text-emerald-900">
+                <div className="space-y-0.5">
+                  <h3 className="text-base sm:text-lg font-black text-emerald-900 leading-snug">
                     Quiz Pembekalan Telah Selesai Dikerjakan!
                   </h3>
-                  <p className="text-xs text-emerald-700 font-medium">
-                    Skor Quiz Anda: <span className="font-black text-emerald-800">{quizScore} / 100</span>
+                  <p className="text-xs sm:text-sm text-emerald-700 font-semibold">
+                    Skor Quiz Anda: <span className="font-black text-emerald-900 bg-white/90 px-2 py-0.5 rounded-lg border border-emerald-200/80 inline-block shadow-xs">{quizScore} / 100</span>
                   </p>
                 </div>
               </div>
-              <p className="text-xs text-emerald-800 font-medium leading-relaxed">
+              <p className="text-xs sm:text-sm text-emerald-800 font-medium leading-relaxed border-t border-emerald-200/60 pt-2.5">
                 Selamat! Anda telah merampungkan modul Pembekalan #{mod.module_order}.
               </p>
             </div>
@@ -532,19 +553,21 @@ function PembekalanDetailPage() {
             {nextModule ? (
               <Button
                 asChild
-                className="w-full rounded-2xl h-14 font-black text-base bg-gradient-to-r from-sky-500 via-indigo-600 to-purple-600 hover:brightness-110 shadow-lg text-white flex items-center justify-center gap-2"
+                className="w-full rounded-2xl h-auto min-h-[56px] py-3.5 px-5 font-black text-xs sm:text-base bg-gradient-to-r from-sky-500 via-indigo-600 to-purple-600 hover:brightness-110 shadow-lg text-white flex items-center justify-center text-center gap-2 whitespace-normal break-words"
               >
-                <Link to="/pembekalan/$id" params={{ id: nextModule.id }}>
-                  Lanjut ke {nextModule.title} <ChevronRight className="h-5 w-5" />
+                <Link to="/pembekalan/$id" params={{ id: nextModule.id }} className="w-full flex items-center justify-center gap-2 text-center">
+                  <span>Lanjut ke {nextModule.title}</span>
+                  <ChevronRight className="h-5 w-5 shrink-0" />
                 </Link>
               </Button>
             ) : (
               <Button
                 asChild
-                className="w-full rounded-2xl h-14 font-black text-base bg-gradient-to-r from-emerald-500 to-teal-600 hover:brightness-110 shadow-lg text-white flex items-center justify-center gap-2"
+                className="w-full rounded-2xl h-auto min-h-[56px] py-3.5 px-5 font-black text-xs sm:text-base bg-gradient-to-r from-emerald-500 to-teal-600 hover:brightness-110 shadow-lg text-white flex items-center justify-center text-center gap-2 whitespace-normal break-words"
               >
-                <Link to="/pembekalan">
-                  <CheckCircle2 className="h-5 w-5" /> Seluruh Modul Pembekalan Telah Tuntas! Kembali ke Daftar
+                <Link to="/pembekalan" className="w-full flex items-center justify-center gap-2 text-center">
+                  <CheckCircle2 className="h-5 w-5 shrink-0" />
+                  <span>Seluruh Modul Pembekalan Telah Tuntas! Kembali ke Daftar</span>
                 </Link>
               </Button>
             )}
