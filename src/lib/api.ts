@@ -523,22 +523,37 @@ export function getStoredPembekalanModules(): PembekalanModule[] {
 }
 
 export async function listPembekalanModules(includeDrafts = false): Promise<PembekalanModule[]> {
+  let dbList: PembekalanModule[] = [];
   try {
     const { data, error } = await supabase.from("pembekalan_modules").select("*").order("module_order", { ascending: true });
     if (!error && data && data.length > 0) {
-      const list = data as PembekalanModule[];
-      return includeDrafts ? list : list.filter((m) => m.status === "published");
+      dbList = data as PembekalanModule[];
     }
   } catch { }
 
   const stored = getStoredPembekalanModules();
-  const sorted = [...stored].sort((a, b) => a.module_order - b.module_order);
-  return includeDrafts ? sorted : sorted.filter((m) => m.status === "published");
+  const map = new Map<string, PembekalanModule>();
+
+  for (const item of [...stored, ...dbList]) {
+    const key = item.id || `pem-${item.module_order}`;
+    map.set(key, item);
+    if (item.module_order) {
+      const orderKey = `pem-${item.module_order}`;
+      if (!map.has(orderKey)) map.set(orderKey, item);
+    }
+  }
+
+  const result = Array.from(map.values()).sort((a, b) => a.module_order - b.module_order);
+  return includeDrafts ? result : result.filter((m) => m.status === "published");
 }
 
 export async function getPembekalanModule(id: string): Promise<PembekalanModule | null> {
   const modules = await listPembekalanModules(true);
-  return modules.find((m) => m.id === id) ?? null;
+  const found = modules.find((m) => m.id === id || m.id === `pem-${id}` || m.module_order === Number(id));
+  if (found) return found;
+
+  const stored = getStoredPembekalanModules();
+  return stored.find((m) => m.id === id || m.id === `pem-${id}` || m.module_order === Number(id)) ?? null;
 }
 
 export async function upsertPembekalanModule(input: Partial<PembekalanModule>): Promise<PembekalanModule> {
@@ -3260,10 +3275,32 @@ export function deleteChallengeItem(id: string): void {
   localStorage.setItem(STORAGE_CHALLENGES_KEY, JSON.stringify(current));
 }
 
+export function getStartOfCurrentWeek(d = new Date()): Date {
+  const date = new Date(d);
+  const day = date.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+  const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+  const monday = new Date(date.setDate(diff));
+  monday.setHours(0, 0, 0, 0);
+  return monday;
+}
+
 export function getStoredChallengeCompletions(): ChallengeCompletion[] {
   try {
     const raw = localStorage.getItem(STORAGE_COMPLETIONS_KEY);
-    return raw ? JSON.parse(raw) : [];
+    if (!raw) return [];
+    const list: ChallengeCompletion[] = JSON.parse(raw);
+    const startOfWeek = getStartOfCurrentWeek();
+
+    return list.map((item) => {
+      const itemDate = item.updated_at ? new Date(item.updated_at) : new Date(0);
+      if (itemDate < startOfWeek) {
+        return {
+          ...item,
+          completed_count: 0,
+        };
+      }
+      return item;
+    });
   } catch {
     return [];
   }
@@ -3273,20 +3310,26 @@ export function toggleWorkerChallengeCheck(
   user: { id: string; name: string; location?: string; function?: string },
   challenge: ChallengeItem,
 ): ChallengeCompletion {
-  const list = getStoredChallengeCompletions();
-  const idx = list.findIndex((c) => c.user_id === user.id && c.challenge_id === challenge.id);
+  const rawList = getStoredChallengeCompletions();
+  const startOfWeek = getStartOfCurrentWeek();
+  const idx = rawList.findIndex((c) => c.user_id === user.id && c.challenge_id === challenge.id);
 
-  if (idx !== -1 && list[idx]) {
-    const existing = list[idx]!;
-    const nextCount = existing.completed_count >= challenge.target_count ? 0 : existing.completed_count + 1;
+  if (idx !== -1 && rawList[idx]) {
+    const existing = rawList[idx]!;
+    const itemDate = existing.updated_at ? new Date(existing.updated_at) : new Date(0);
+    const isPreviousWeek = itemDate < startOfWeek;
+
+    const baseCount = isPreviousWeek ? 0 : existing.completed_count;
+    const nextCount = baseCount >= challenge.target_count ? 0 : baseCount + 1;
+
     const updated: ChallengeCompletion = {
       ...existing,
       completed_count: nextCount,
       completed_at: nextCount > 0 ? new Date().toISOString() : existing.completed_at,
       updated_at: new Date().toISOString(),
     };
-    list[idx] = updated;
-    localStorage.setItem(STORAGE_COMPLETIONS_KEY, JSON.stringify(list));
+    rawList[idx] = updated;
+    localStorage.setItem(STORAGE_COMPLETIONS_KEY, JSON.stringify(rawList));
     return updated;
   }
 
@@ -3302,8 +3345,8 @@ export function toggleWorkerChallengeCheck(
     updated_at: new Date().toISOString(),
   };
 
-  list.unshift(newComp);
-  localStorage.setItem(STORAGE_COMPLETIONS_KEY, JSON.stringify(list));
+  rawList.unshift(newComp);
+  localStorage.setItem(STORAGE_COMPLETIONS_KEY, JSON.stringify(rawList));
   return newComp;
 }
 
