@@ -45,6 +45,32 @@ export async function createUser(input: {
   return data as AppUser;
 }
 
+export async function ensureUserExists(
+  userId: string,
+  name?: string,
+  employeeNumber?: string,
+  location?: string,
+  userFunction?: string
+) {
+  if (!userId) return;
+  try {
+    const payload = {
+      id: userId,
+      name: name || userId,
+      employee_number: employeeNumber || userId,
+      location: location || "Pusat",
+      function: userFunction || "Peserta",
+      email: `${userId.toLowerCase().replace(/[^a-z0-9]/g, "")}@wellness.local`,
+      is_admin: false,
+      updated_at: new Date().toISOString(),
+    };
+    await supabase.from("users").upsert(payload as never, { onConflict: "id" });
+  } catch (err) {
+    console.warn("Failed to ensure user in Supabase:", err);
+  }
+}
+
+
 export async function getUser(id: string): Promise<AppUser | null> {
   const stored = getStoredCurrentUser();
   if (stored && (stored["id"] === id || stored["employee_number"] === id || stored["username"] === id)) {
@@ -797,15 +823,18 @@ export async function savePembekalanVideoProgress(
   const now = new Date().toISOString();
 
   let existing = idx !== -1 ? list[idx]! : null;
+  const newPct = Math.max(existing?.video_progress_percentage || 0, Math.min(100, Math.round(progressPercentage)));
+  const isVideoDone = existing?.video_completed || videoCompleted || newPct >= 99;
+
   const item: PembekalanProgress = {
     id: existing ? existing.id : `prog-${Date.now()}`,
     user_id: userId,
     module_id: moduleId,
-    video_progress_percentage: Math.max(existing?.video_progress_percentage || 0, Math.min(100, Math.round(progressPercentage))),
-    video_completed: existing?.video_completed || videoCompleted,
+    video_progress_percentage: newPct,
+    video_completed: isVideoDone,
     quiz_completed: existing?.quiz_completed || false,
     quiz_score: existing?.quiz_score,
-    completed_at: existing?.completed_at || (videoCompleted && existing?.quiz_completed ? now : null),
+    completed_at: existing?.completed_at || (isVideoDone && existing?.quiz_completed ? now : null),
     updated_at: now,
   };
 
@@ -817,13 +846,35 @@ export async function savePembekalanVideoProgress(
 
   localStorage.setItem(STORAGE_PEMBEKALAN_PROGRESS_KEY, JSON.stringify(list));
 
-  // 1. Sync to Supabase pembekalan_progress
+  // Ensure user exists in Supabase users table to satisfy any foreign keys & user reports
+  const storedUser = getStoredCurrentUser();
+  await ensureUserExists(
+    userId,
+    storedUser?.name as string | undefined,
+    storedUser?.employee_number as string | undefined,
+    storedUser?.location as string | undefined,
+    storedUser?.function as string | undefined
+  );
+
+  // 1. Sync to Supabase pembekalan_progress (omit client random `id` to allow clean upsert on `user_id,module_id`)
   try {
-    const res = await supabase.from("pembekalan_progress").upsert(item as never, { onConflict: "user_id,module_id" });
+    const dbPayload = {
+      user_id: userId,
+      module_id: moduleId,
+      video_progress_percentage: item.video_progress_percentage,
+      video_completed: item.video_completed,
+      quiz_completed: item.quiz_completed,
+      quiz_score: item.quiz_score ?? 0,
+      completed_at: item.completed_at,
+      updated_at: item.updated_at,
+    };
+    const res = await supabase.from("pembekalan_progress").upsert(dbPayload as never, { onConflict: "user_id,module_id" });
     if (res.error) {
-      await supabase.from("pembekalan_progress").upsert(item as never);
+      console.error("pembekalan_progress upsert error:", res.error);
     }
-  } catch { }
+  } catch (err) {
+    console.error("pembekalan_progress exception:", err);
+  }
 
   // 2. Dual-sync to Supabase video_progress table for cross-device admin report resilience
   try {
@@ -833,7 +884,9 @@ export async function savePembekalanVideoProgress(
       progress_percentage: item.video_progress_percentage,
       completed: item.video_completed,
     });
-  } catch { }
+  } catch (err) {
+    console.error("video_progress exception:", err);
+  }
 
   return item;
 }
@@ -868,13 +921,35 @@ export async function submitPembekalanQuiz(
 
   localStorage.setItem(STORAGE_PEMBEKALAN_PROGRESS_KEY, JSON.stringify(list));
 
-  // 1. Sync to Supabase pembekalan_progress
+  // Ensure user exists in Supabase users table to satisfy any foreign keys & user reports
+  const storedUser = getStoredCurrentUser();
+  await ensureUserExists(
+    userId,
+    storedUser?.name as string | undefined,
+    storedUser?.employee_number as string | undefined,
+    storedUser?.location as string | undefined,
+    storedUser?.function as string | undefined
+  );
+
+  // 1. Sync to Supabase pembekalan_progress (omit client random `id` to allow clean upsert on `user_id,module_id`)
   try {
-    const res = await supabase.from("pembekalan_progress").upsert(item as never, { onConflict: "user_id,module_id" });
+    const dbPayload = {
+      user_id: userId,
+      module_id: moduleId,
+      video_progress_percentage: 100,
+      video_completed: true,
+      quiz_completed: true,
+      quiz_score: score,
+      completed_at: now,
+      updated_at: now,
+    };
+    const res = await supabase.from("pembekalan_progress").upsert(dbPayload as never, { onConflict: "user_id,module_id" });
     if (res.error) {
-      await supabase.from("pembekalan_progress").upsert(item as never);
+      console.error("submitPembekalanQuiz upsert error:", res.error);
     }
-  } catch { }
+  } catch (err) {
+    console.error("submitPembekalanQuiz exception:", err);
+  }
 
   // 2. Dual-sync to Supabase video_progress table
   try {
@@ -884,10 +959,13 @@ export async function submitPembekalanQuiz(
       progress_percentage: 100,
       completed: true,
     });
-  } catch { }
+  } catch (err) {
+    console.error("submitPembekalanQuiz video_progress exception:", err);
+  }
 
   return item;
 }
+
 
 /* --------------------------------- quiz ---------------------------------- */
 
@@ -1385,6 +1463,7 @@ export async function authenticateSpreadsheetUser(
   };
 
   setStoredCurrentUser(userProfile as unknown as Record<string, unknown>);
+  void ensureUserExists(userProfile.id, userProfile.name, userProfile.employee_number, userProfile.location, userProfile.function);
   return userProfile;
 }
 
