@@ -722,6 +722,8 @@ export function getStoredPembekalanProgressList(): PembekalanProgress[] {
 
 export async function listPembekalanProgress(userId?: string): Promise<PembekalanProgress[]> {
   let dbList: PembekalanProgress[] = [];
+
+  // 1. Fetch from primary table: pembekalan_progress
   try {
     let query = supabase.from("pembekalan_progress").select("*");
     if (userId) {
@@ -729,6 +731,33 @@ export async function listPembekalanProgress(userId?: string): Promise<Pembekala
     }
     const { data, error } = await query;
     if (!error && data) dbList = data as PembekalanProgress[];
+  } catch { }
+
+  // 2. Fetch from backup table: video_progress (map health_talk_id to module_id for cross-table resilience)
+  try {
+    let vpQuery = supabase.from("video_progress").select("*");
+    if (userId) {
+      vpQuery = vpQuery.eq("user_id", userId);
+    }
+    const { data: vpData, error: vpError } = await vpQuery;
+    if (!vpError && vpData) {
+      vpData.forEach((vp: any) => {
+        if (vp.health_talk_id && (vp.health_talk_id.startsWith("pem-") || vp.health_talk_id.length > 0)) {
+          const modId = vp.health_talk_id;
+          dbList.push({
+            id: vp.id || `vp-${vp.user_id}-${modId}`,
+            user_id: vp.user_id,
+            module_id: modId,
+            video_progress_percentage: vp.progress_percentage || 0,
+            video_completed: vp.completed || false,
+            quiz_completed: false,
+            quiz_score: 0,
+            completed_at: vp.completed_at || null,
+            updated_at: vp.updated_at || new Date().toISOString(),
+          });
+        }
+      });
+    }
   } catch { }
 
   const stored = getStoredPembekalanProgressList();
@@ -741,6 +770,8 @@ export async function listPembekalanProgress(userId?: string): Promise<Pembekala
     if (
       !existing ||
       (item.quiz_completed && !existing.quiz_completed) ||
+      (item.video_completed && !existing.video_completed) ||
+      (item.video_progress_percentage || 0) > (existing.video_progress_percentage || 0) ||
       new Date(item.updated_at || 0) > new Date(existing.updated_at || 0)
     ) {
       map.set(key, item);
@@ -786,8 +817,22 @@ export async function savePembekalanVideoProgress(
 
   localStorage.setItem(STORAGE_PEMBEKALAN_PROGRESS_KEY, JSON.stringify(list));
 
+  // 1. Sync to Supabase pembekalan_progress
   try {
-    await supabase.from("pembekalan_progress").upsert(item as never);
+    const res = await supabase.from("pembekalan_progress").upsert(item as never, { onConflict: "user_id,module_id" });
+    if (res.error) {
+      await supabase.from("pembekalan_progress").upsert(item as never);
+    }
+  } catch { }
+
+  // 2. Dual-sync to Supabase video_progress table for cross-device admin report resilience
+  try {
+    await saveVideoProgress({
+      user_id: userId,
+      health_talk_id: moduleId,
+      progress_percentage: item.video_progress_percentage,
+      completed: item.video_completed,
+    });
   } catch { }
 
   return item;
@@ -823,8 +868,22 @@ export async function submitPembekalanQuiz(
 
   localStorage.setItem(STORAGE_PEMBEKALAN_PROGRESS_KEY, JSON.stringify(list));
 
+  // 1. Sync to Supabase pembekalan_progress
   try {
-    await supabase.from("pembekalan_progress").upsert(item as never);
+    const res = await supabase.from("pembekalan_progress").upsert(item as never, { onConflict: "user_id,module_id" });
+    if (res.error) {
+      await supabase.from("pembekalan_progress").upsert(item as never);
+    }
+  } catch { }
+
+  // 2. Dual-sync to Supabase video_progress table
+  try {
+    await saveVideoProgress({
+      user_id: userId,
+      health_talk_id: moduleId,
+      progress_percentage: 100,
+      completed: true,
+    });
   } catch { }
 
   return item;
