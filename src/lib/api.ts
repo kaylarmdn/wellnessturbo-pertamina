@@ -1499,7 +1499,7 @@ export function cleanPointsValue(valStr: string | undefined): number {
   const val = parseFloat(cleaned);
   // Real points are score values (e.g. 0-5000). Any value >= 10,000 is an employee NIP number or timestamp, NOT points!
   if (isNaN(val) || val <= 0 || val >= 10000) return 0;
-  return Math.round(val * 10) / 10;
+  return Math.round(val * 100) / 100;
 }
 
 export const NEW_GROUP_TAB_SPECS = [
@@ -1639,7 +1639,7 @@ export async function fetchGroupLeaderboardFromSheets(sheetUrl: string): Promise
             }
 
             if (foundGroupPts === 0 && count > 0) {
-              foundGroupPts = Math.round((totalMemberPts / count) * 10) / 10;
+              foundGroupPts = Math.round((totalMemberPts / count) * 100) / 100;
             }
             memberCount = count;
             break;
@@ -1931,7 +1931,7 @@ export async function fetchSpreadsheetLeaderboard(
           name,
           location,
           function: func,
-          points: Math.round(total * 10) / 10,
+          points: Math.round(total * 100) / 100,
           rank: 0,
           nopek,
           employee_number: nopek,
