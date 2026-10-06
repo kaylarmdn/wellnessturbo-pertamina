@@ -176,6 +176,7 @@ function PembekalanDetailPage() {
   const [duration, setDuration] = useState(0);
   const [videoCompleted, setVideoCompleted] = useState(false);
   const [videoError, setVideoError] = useState(false);
+  const [timerSeconds, setTimerSeconds] = useState(600);
 
   // Quiz state
   const [userAnswers, setUserAnswers] = useState<Record<string, string>>({});
