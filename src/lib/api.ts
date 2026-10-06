@@ -1499,7 +1499,7 @@ export function cleanPointsValue(valStr: string | undefined): number {
   const val = parseFloat(cleaned);
   // Real points are score values (e.g. 0-5000). Any value >= 10,000 is an employee NIP number or timestamp, NOT points!
   if (isNaN(val) || val <= 0 || val >= 10000) return 0;
-  return val > 0 && val <= 1 && !valStr.includes("%") ? Math.round(val * 100 * 10) / 10 : Math.round(val * 10) / 10;
+  return Math.round(val * 10) / 10;
 }
 
 export const NEW_GROUP_TAB_SPECS = [
