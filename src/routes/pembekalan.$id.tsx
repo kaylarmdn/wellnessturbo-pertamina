@@ -193,27 +193,30 @@ function PembekalanDetailPage() {
     queryFn: () => listPembekalanQuizQuestions(id),
   });
 
+  // Reset states when module ID `id` changes or progress data loads
   useEffect(() => {
+    maxWatched.current = 0;
+    lastSaved.current = 0;
+    setUserAnswers({});
+    setSubmittingQuiz(false);
+    setVideoError(false);
+
     if (progressQuery.data) {
-      setVideoCompleted(progressQuery.data.video_completed);
-      if (progressQuery.data.video_completed) {
+      const isDone = progressQuery.data.video_completed;
+      setVideoCompleted(isDone);
+      if (isDone) {
         setPercent(100);
+        setTimerSeconds(0);
       } else {
         setPercent(progressQuery.data.video_progress_percentage || 0);
+        setTimerSeconds(600);
       }
+    } else {
+      setVideoCompleted(false);
+      setPercent(0);
+      setTimerSeconds(600);
     }
-  }, [progressQuery.data]);
-
-  const persist = useCallback(
-    async (pct: number, done: boolean) => {
-      if (!user) return;
-      await savePembekalanVideoProgress(user.id, id, pct, done);
-      queryClient.invalidateQueries({ queryKey: ["pembekalan-progress"] });
-    },
-    [user, id, queryClient],
-  );
-
-  const [timerSeconds, setTimerSeconds] = useState(600);
+  }, [id, progressQuery.data]);
 
   useEffect(() => {
     let timer: any;
@@ -226,6 +229,15 @@ function PembekalanDetailPage() {
       if (timer) clearInterval(timer);
     };
   }, [videoCompleted, timerSeconds]);
+
+  const persist = useCallback(
+    async (pct: number, done: boolean) => {
+      if (!user) return;
+      await savePembekalanVideoProgress(user.id, id, pct, done);
+      queryClient.invalidateQueries({ queryKey: ["pembekalan-progress"] });
+    },
+    [user, id, queryClient],
+  );
 
   const formatCountdown = (sec: number): string => {
     const m = Math.floor(sec / 60);
@@ -359,7 +371,7 @@ function PembekalanDetailPage() {
       </div>
 
       {/* Video Player Container */}
-      <div className="relative overflow-hidden rounded-3xl bg-slate-950 shadow-2xl border-2 border-indigo-300/40 ring-4 ring-indigo-500/10">
+      <div className="relative overflow-hidden rounded-2xl bg-slate-950 shadow-xl border border-indigo-300/40 p-0 m-0 touch-auto pointer-events-auto z-0">
         {youtubeId ? (
           <YouTubePlayer
             videoId={youtubeId}
@@ -368,11 +380,11 @@ function PembekalanDetailPage() {
             completed={videoCompleted}
           />
         ) : googleDriveUrl ? (
-          <div className="relative aspect-video w-full bg-slate-950 overflow-hidden">
+          <div className="relative aspect-video w-full bg-slate-950 overflow-hidden rounded-2xl">
             <iframe
               src={googleDriveUrl}
-              className="h-full w-full border-0 rounded-2xl"
-              allow="autoplay; encrypted-media; fullscreen"
+              className="h-full w-full border-0 rounded-2xl relative z-10 pointer-events-auto touch-auto"
+              allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
               allowFullScreen
             />
           </div>
@@ -388,7 +400,7 @@ function PembekalanDetailPage() {
             onSeeking={onSeeking}
             onEnded={onEnded}
             onError={() => setVideoError(true)}
-            className="aspect-video w-full object-cover"
+            className="aspect-video w-full object-cover rounded-2xl relative z-10 pointer-events-auto"
           />
         )}
       </div>
