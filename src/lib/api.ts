@@ -1810,7 +1810,7 @@ export async function fetchSpreadsheetLeaderboard(
 
   if (locIdx === -1) locIdx = 2; // Kolom C is index 2
 
-  // Specific handling for POIN BFA (Kolom A = Nama [0], Kolom C = Lokasi [2], Kolom T = Poin Hasil [19])
+  // Specific handling for POIN BFA (Kolom A = Nama [0], Kolom B = No Pekerja [1], Kolom C = Lokasi [2], Kolom Z = Poin [25])
   const isBfa = sheetName === "POIN BFA" || catLower.includes("bfa");
   if (isBfa) {
     const rows: LeaderboardRow[] = [];
@@ -1821,6 +1821,7 @@ export async function fetchSpreadsheetLeaderboard(
       let name = (cols[0] && cols[0].trim()) ? cols[0].trim() : (cols[nameIdx] ?? cols[1] ?? "");
       if (!isValidParticipantName(name)) continue;
 
+      let nopek = (cols[1] && cols[1].trim()) ? cols[1].trim() : (nopekIdx !== -1 && cols[nopekIdx] ? cols[nopekIdx].trim() : "");
       let location = (cols[2] && cols[2].trim()) ? cols[2].trim() : (locIdx !== -1 ? (cols[locIdx] ?? "-") : "-");
       let func = funcIdx !== -1 ? (cols[funcIdx] ?? "-") : "-";
 
@@ -1832,16 +1833,14 @@ export async function fetchSpreadsheetLeaderboard(
         if (userMeta.function && userMeta.function !== "-") func = userMeta.function;
       }
 
-      let nopek = (nopekIdx !== -1 && cols[nopekIdx]) ? cols[nopekIdx].trim() : "";
-
-      // Extract points: Kolom T is index 19 (fallback to pointsIdx or last numeric column)
-      let rawPoints = cols[19] ?? (pointsIdx !== -1 ? cols[pointsIdx] : cols[cols.length - 1]) ?? "0";
+      // Extract points: Kolom Z is index 25 (fallback to pointsIdx or last numeric column)
+      let rawPoints = cols[25] ?? (pointsIdx !== -1 ? cols[pointsIdx] : cols[cols.length - 1]) ?? "0";
       let points = cleanPointsValue(rawPoints);
 
-      // Fallback if index 19 was empty
+      // Fallback if index 25 was empty
       if (points === 0) {
         for (let c = cols.length - 1; c >= 0; c--) {
-          if (c === 0 || c === 2) continue;
+          if (c === 0 || c === 1 || c === 2) continue;
           const colH = headers[c] || "";
           if (colH.includes("nomor") || colH.includes("nip") || colH.includes("nik") || colH.includes("pekerja")) continue;
           const pts = cleanPointsValue(cols[c]);
