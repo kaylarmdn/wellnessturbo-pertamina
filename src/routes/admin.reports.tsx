@@ -7,8 +7,11 @@ import {
   ChevronDown,
   ChevronUp,
   Clock,
+  Copy,
+  Download,
   Eye,
   FileBarChart,
+  FileSpreadsheet,
   GraduationCap,
   HelpCircle,
   MapPin,
@@ -21,6 +24,7 @@ import {
   Video,
 } from "lucide-react";
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -363,6 +367,65 @@ function AdminReportsPage() {
     });
   }, [enrichedProgressList, search, videoStatusFilter, quizStatusFilter]);
 
+  const handleDownloadCSV = () => {
+    if (filteredCompleted3List.length === 0) {
+      toast.error("Tidak ada data peserta tuntas untuk di-download.");
+      return;
+    }
+
+    const headers = [
+      "No",
+      "Nama Pekerja",
+      "No. Pekerja / NopeK",
+      "Lokasi",
+      "Fungsi",
+      "Rincian Skor Kuis",
+      "Rata-Rata Skor Quiz",
+      "Waktu Selesai",
+    ];
+
+    const rows = filteredCompleted3List.map((item, idx) => [
+      idx + 1,
+      `"${(item.user_name || "").replace(/"/g, '""')}"`,
+      `"${(item.employee_number || "").replace(/"/g, '""')}"`,
+      `"${(item.user_location || "").replace(/"/g, '""')}"`,
+      `"${(item.user_function || "").replace(/"/g, '""')}"`,
+      `"${(item.module_scores_text || "").replace(/"/g, '""')}"`,
+      item.average_score,
+      `"${formatDate(item.completed_at)}"`,
+    ]);
+
+    const csvString = "\uFEFF" + [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Backup_Laporan_Pembekalan_WellnessTurbo_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success("✅ File CSV Backup berhasil di-download! Siap di-import ke Google Spreadsheet / Excel.");
+  };
+
+  const handleCopySpreadsheet = () => {
+    if (filteredCompleted3List.length === 0) {
+      toast.error("Tidak ada data peserta tuntas untuk disalin.");
+      return;
+    }
+
+    const headers = "No\tNama Pekerja\tNo. Pekerja / NopeK\tLokasi\tFungsi\tRincian Skor Kuis\tRata-Rata Skor Quiz\tWaktu Selesai";
+    const rows = filteredCompleted3List.map(
+      (item, idx) =>
+        `${idx + 1}\t${item.user_name}\t${item.employee_number}\t${item.user_location}\t${item.user_function}\t${item.module_scores_text}\t${item.average_score}\t${formatDate(item.completed_at)}`
+    );
+
+    const tsvText = [headers, ...rows].join("\n");
+    navigator.clipboard.writeText(tsvText).then(() => {
+      toast.success("📋 Data laporan berhasil disalin ke Clipboard! Buka Google Spreadsheet lalu tekan Ctrl + V.");
+    });
+  };
+
   return (
     <div className="space-y-6 animate-fade-in pb-12 w-full max-w-full min-w-0 overflow-x-hidden">
       {/* Page Header Banner */}
@@ -379,18 +442,37 @@ function AdminReportsPage() {
           </p>
         </div>
 
-        <Button
-          variant="outline"
-          onClick={() => {
-            pembekalanModulesQuery.refetch();
-            pembekalanProgressQuery.refetch();
-            userSheetQuery.refetch();
-          }}
-          className="rounded-2xl font-bold text-xs border-slate-200 bg-white hover:bg-slate-50 flex items-center gap-2 shrink-0 self-start sm:self-center shadow-2xs"
-        >
-          <RefreshCw className="h-4 w-4 text-indigo-600" />
-          <span>Refresh Data</span>
-        </Button>
+        <div className="flex flex-wrap items-center gap-2 shrink-0 self-start sm:self-center">
+          <Button
+            variant="outline"
+            onClick={handleCopySpreadsheet}
+            className="rounded-2xl font-bold text-xs border-emerald-300 bg-white text-emerald-800 hover:bg-emerald-50 flex items-center gap-1.5 shadow-2xs"
+          >
+            <Copy className="h-4 w-4 text-emerald-600" />
+            <span>Salin ke Sheet (Ctrl+V)</span>
+          </Button>
+
+          <Button
+            onClick={handleDownloadCSV}
+            className="rounded-2xl font-bold text-xs bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 shadow-2xs"
+          >
+            <Download className="h-4 w-4" />
+            <span>Download Backup (.CSV)</span>
+          </Button>
+
+          <Button
+            variant="outline"
+            onClick={() => {
+              pembekalanModulesQuery.refetch();
+              pembekalanProgressQuery.refetch();
+              userSheetQuery.refetch();
+            }}
+            className="rounded-2xl font-bold text-xs border-slate-200 bg-white hover:bg-slate-50 flex items-center gap-2 shrink-0 shadow-2xs"
+          >
+            <RefreshCw className="h-4 w-4 text-indigo-600" />
+            <span>Refresh</span>
+          </Button>
+        </div>
       </div>
 
       {/* KPI Cards Summary Dashboard */}
@@ -495,9 +577,28 @@ function AdminReportsPage() {
                   Menampilkan 1 baris per pekerja yang telah menyelesaikan seluruh Pembekalan 1 hingga 3 beserta rata-rata nilai quiz-nya.
                 </p>
               </div>
-              <Badge className="bg-emerald-600 text-white font-black text-xs px-3 py-1 self-start sm:self-center shadow-xs">
-                Total: {filteredCompleted3List.length} Pekerja Lulus
-              </Badge>
+              <div className="flex flex-wrap items-center gap-2 self-start sm:self-center">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleCopySpreadsheet}
+                  className="rounded-2xl text-xs font-bold border-emerald-300 bg-white text-emerald-800 hover:bg-emerald-100 flex items-center gap-1.5 shadow-2xs"
+                >
+                  <Copy className="h-3.5 w-3.5 text-emerald-600" />
+                  <span>Salin ke Sheet</span>
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleDownloadCSV}
+                  className="rounded-2xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 shadow-2xs"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  <span>Download Backup (.CSV)</span>
+                </Button>
+                <Badge className="bg-emerald-600 text-white font-black text-xs px-3 py-1.5 shadow-xs">
+                  Total: {filteredCompleted3List.length} Pekerja Lulus
+                </Badge>
+              </div>
             </CardHeader>
             <CardContent className="p-0">
               {filteredCompleted3List.length === 0 ? (
