@@ -706,20 +706,33 @@ export function getStoredPembekalanProgressList(): PembekalanProgress[] {
 }
 
 export async function listPembekalanProgress(userId?: string): Promise<PembekalanProgress[]> {
+  let dbList: PembekalanProgress[] = [];
   try {
     let query = supabase.from("pembekalan_progress").select("*");
     if (userId) {
       query = query.eq("user_id", userId);
     }
     const { data, error } = await query;
-    if (!error && data && data.length > 0) return data as PembekalanProgress[];
+    if (!error && data) dbList = data as PembekalanProgress[];
   } catch { }
 
   const stored = getStoredPembekalanProgressList();
-  if (userId) {
-    return stored.filter((p) => p.user_id === userId);
+  const filteredStored = userId ? stored.filter((p) => p.user_id === userId) : stored;
+
+  const map = new Map<string, PembekalanProgress>();
+  for (const item of [...filteredStored, ...dbList]) {
+    const key = `${item.user_id}_${item.module_id}`;
+    const existing = map.get(key);
+    if (
+      !existing ||
+      (item.quiz_completed && !existing.quiz_completed) ||
+      new Date(item.updated_at || 0) > new Date(existing.updated_at || 0)
+    ) {
+      map.set(key, item);
+    }
   }
-  return stored;
+
+  return Array.from(map.values());
 }
 
 export async function getPembekalanProgress(userId: string, moduleId: string): Promise<PembekalanProgress | null> {

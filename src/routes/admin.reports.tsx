@@ -117,6 +117,7 @@ function AdminReportsPage() {
   const pembekalanProgressQuery = useQuery({
     queryKey: ["pembekalan-progress-reports"],
     queryFn: () => listPembekalanProgress(""),
+    refetchInterval: 5000,
   });
 
   const usersList = usersQuery.data ?? [];

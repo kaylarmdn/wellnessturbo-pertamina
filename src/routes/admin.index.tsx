@@ -43,7 +43,11 @@ function AdminDashboard() {
   const challenges = useQuery({ queryKey: ["challenges-all"], queryFn: () => listChallenges() });
   const events = useQuery({ queryKey: ["events-active"], queryFn: listActiveEvents });
   const pembekalanModules = useQuery({ queryKey: ["pembekalan-modules"], queryFn: () => listPembekalanModules(true) });
-  const pembekalanProgress = useQuery({ queryKey: ["pembekalan-progress"], queryFn: () => listPembekalanProgress("") });
+  const pembekalanProgress = useQuery({
+    queryKey: ["pembekalan-progress"],
+    queryFn: () => listPembekalanProgress(""),
+    refetchInterval: 5000,
+  });
 
   const totalUsers = users.data?.length ?? 0;
   const totalModules = pembekalanModules.data?.length ?? 0;
