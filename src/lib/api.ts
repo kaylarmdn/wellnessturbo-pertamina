@@ -633,7 +633,7 @@ export function getStoredPembekalanQuestions(moduleId?: string): PembekalanQuizQ
   try {
     const raw = localStorage.getItem(STORAGE_PEMBEKALAN_QUESTIONS_KEY);
     let list: PembekalanQuizQuestion[] = raw ? JSON.parse(raw) : INITIAL_PEMBEKALAN_QUESTIONS;
-    
+
     let updated = false;
 
     // Sync pem-1 questions
@@ -902,7 +902,7 @@ export async function syncPembekalanProgressToSupabase(item: PembekalanProgress)
       progress_percentage: payload.video_progress_percentage,
       completed: payload.video_completed,
     });
-  } catch {}
+  } catch { }
 }
 
 export async function savePembekalanVideoProgress(
@@ -1017,14 +1017,14 @@ export async function listVideoProgress(userId?: string): Promise<VideoProgress[
     if (userId) query = query.eq("user_id", userId);
     const { data, error } = await query;
     if (!error && data) dbList = data as VideoProgress[];
-  } catch {}
+  } catch { }
 
   let localList: VideoProgress[] = [];
   try {
     const localRaw = localStorage.getItem("wt_video_progress_v1");
     localList = localRaw ? JSON.parse(localRaw) : [];
     if (userId) localList = localList.filter((p) => p.user_id === userId);
-  } catch {}
+  } catch { }
 
   const map = new Map<string, VideoProgress>();
   for (const item of [...localList, ...dbList]) {
@@ -1074,13 +1074,13 @@ export async function saveVideoProgress(input: {
       localList.push(payload);
     }
     localStorage.setItem("wt_video_progress_v1", JSON.stringify(localList));
-  } catch {}
+  } catch { }
 
   try {
     await supabase
       .from("video_progress")
       .upsert(payload, { onConflict: "user_id,health_talk_id" });
-  } catch {}
+  } catch { }
 }
 
 /* ------------------------------- challenges ------------------------------- */
@@ -2000,8 +2000,8 @@ export async function fetchSpreadsheetLeaderboard(
       let func = funcIdx !== -1 ? (cols[funcIdx] ?? "-") : "-";
 
       const userMeta = userMetaMap.byName.get(cleanKey(name)) ||
-                       userMetaMap.byName.get(name.toLowerCase()) ||
-                       (nopek ? (userMetaMap.byUsername.get(nopek.toLowerCase()) || userMetaMap.byUsername.get(cleanKey(nopek))) : undefined);
+        userMetaMap.byName.get(name.toLowerCase()) ||
+        (nopek ? (userMetaMap.byUsername.get(nopek.toLowerCase()) || userMetaMap.byUsername.get(cleanKey(nopek))) : undefined);
       if (userMeta) {
         if (userMeta.location && userMeta.location !== "-") location = userMeta.location;
         if (userMeta.function && userMeta.function !== "-") func = userMeta.function;
@@ -2072,8 +2072,8 @@ export async function fetchSpreadsheetLeaderboard(
       let nopek = (nopekIdx !== -1 && cols[nopekIdx]) ? cols[nopekIdx].trim() : "";
 
       const userMeta = userMetaMap.byName.get(cleanKey(name)) ||
-                       userMetaMap.byName.get(name.toLowerCase()) ||
-                       (nopek ? (userMetaMap.byUsername.get(nopek.toLowerCase()) || userMetaMap.byUsername.get(cleanKey(nopek))) : undefined);
+        userMetaMap.byName.get(name.toLowerCase()) ||
+        (nopek ? (userMetaMap.byUsername.get(nopek.toLowerCase()) || userMetaMap.byUsername.get(cleanKey(nopek))) : undefined);
       if (userMeta) {
         if (userMeta.location && userMeta.location !== "-") location = userMeta.location;
         if (userMeta.function && userMeta.function !== "-") func = userMeta.function;
@@ -2194,8 +2194,8 @@ export async function fetchSpreadsheetLeaderboard(
 
     // Resolve location, function, and gender from userMetaMap (loaded from JENIS KELAMIN NOVER / UNDER / USER sheets)
     const userMeta = userMetaMap.byName.get(cleanKey(name)) ||
-                     userMetaMap.byName.get(name.toLowerCase()) ||
-                     (nopek ? (userMetaMap.byUsername.get(nopek.toLowerCase()) || userMetaMap.byUsername.get(cleanKey(nopek))) : undefined);
+      userMetaMap.byName.get(name.toLowerCase()) ||
+      (nopek ? (userMetaMap.byUsername.get(nopek.toLowerCase()) || userMetaMap.byUsername.get(cleanKey(nopek))) : undefined);
 
     if (userMeta) {
       if (userMeta.location && userMeta.location !== "-") location = userMeta.location;
@@ -2521,65 +2521,65 @@ export async function fetchAdminLeaderboardAll(sheetUrl: string): Promise<Leader
     if (turboRes) {
       const text = turboRes.text;
       const parsed = parseCsv(text);
-        if (parsed.length > 1 && parsed[0]) {
-          const headerRow = parsed[0];
-          const headers = headerRow.map((h) => h.toLowerCase().trim());
+      if (parsed.length > 1 && parsed[0]) {
+        const headerRow = parsed[0];
+        const headers = headerRow.map((h) => h.toLowerCase().trim());
 
-          let nameIdx = headers.findIndex((h) => (h.includes("nama") || h.includes("name")) && !h.includes("nomor"));
-          if (nameIdx === -1) nameIdx = 1;
+        let nameIdx = headers.findIndex((h) => (h.includes("nama") || h.includes("name")) && !h.includes("nomor"));
+        if (nameIdx === -1) nameIdx = 1;
 
-          let nopekIdx = headers.findIndex(
-            (h) =>
-              h.includes("nopek") ||
-              h.includes("no. pekerja") ||
-              h.includes("no pekerja") ||
-              h.includes("nomor pekerja") ||
-              h.includes("nip") ||
-              h.includes("nik") ||
-              h.includes("username") ||
-              h.includes("id pekerja")
-          );
-          if (nopekIdx === -1) nopekIdx = 0;
+        let nopekIdx = headers.findIndex(
+          (h) =>
+            h.includes("nopek") ||
+            h.includes("no. pekerja") ||
+            h.includes("no pekerja") ||
+            h.includes("nomor pekerja") ||
+            h.includes("nip") ||
+            h.includes("nik") ||
+            h.includes("username") ||
+            h.includes("id pekerja")
+        );
+        if (nopekIdx === -1) nopekIdx = 0;
 
-          let poinIdx = headers.findIndex((h) => (h.includes("poin keseluruhan") || h.includes("keseluruhan") || h.includes("poin") || h.includes("skor")) && !h.includes("nomor") && !h.includes("nip"));
-          if (poinIdx === -1 && headerRow.length >= 16) {
-            poinIdx = 15; // Column P is index 15
+        let poinIdx = headers.findIndex((h) => (h.includes("poin keseluruhan") || h.includes("keseluruhan") || h.includes("poin") || h.includes("skor")) && !h.includes("nomor") && !h.includes("nip"));
+        if (poinIdx === -1 && headerRow.length >= 16) {
+          poinIdx = 15; // Column P is index 15
+        }
+
+        for (let i = 1; i < parsed.length; i++) {
+          const cols = parsed[i];
+          if (!cols || cols.length === 0) continue;
+          const rawName = cols[nameIdx] ?? cols[1] ?? cols[0];
+          if (!isValidParticipantName(rawName)) continue;
+          const name = rawName!.trim();
+          const nopek = (nopekIdx !== -1 && cols[nopekIdx]) ? cols[nopekIdx].trim() : (cols[0] && !isNaN(Number(cols[0].trim())) ? cols[0].trim() : "");
+
+          let ptsFloat = 0;
+          // Extract points strictly from Column P (index 15) starting from Row 2
+          if (cols.length >= 16 && cols[15] !== undefined) {
+            ptsFloat = cleanPointsValue(cols[15]);
+          }
+          if (ptsFloat === 0 && poinIdx !== -1 && cols[poinIdx]) {
+            ptsFloat = cleanPointsValue(cols[poinIdx]);
           }
 
-          for (let i = 1; i < parsed.length; i++) {
-            const cols = parsed[i];
-            if (!cols || cols.length === 0) continue;
-            const rawName = cols[nameIdx] ?? cols[1] ?? cols[0];
-            if (!isValidParticipantName(rawName)) continue;
-            const name = rawName!.trim();
-            const nopek = (nopekIdx !== -1 && cols[nopekIdx]) ? cols[nopekIdx].trim() : (cols[0] && !isNaN(Number(cols[0].trim())) ? cols[0].trim() : "");
-
-            let ptsFloat = 0;
-            // Extract points strictly from Column P (index 15) starting from Row 2
-            if (cols.length >= 16 && cols[15] !== undefined) {
-              ptsFloat = cleanPointsValue(cols[15]);
+          if (ptsFloat > 0) {
+            const cName = cleanName(name);
+            const eName = name.toLowerCase();
+            pointsMap.set(cName, ptsFloat);
+            pointsMap.set(eName, ptsFloat);
+            if (nopek) {
+              const cNopek = cleanName(nopek);
+              const eNopek = nopek.toLowerCase();
+              pointsMap.set(`nopek_${cNopek}`, ptsFloat);
+              pointsMap.set(`nopek_${eNopek}`, ptsFloat);
+              pointsMap.set(cNopek, ptsFloat);
+              pointsMap.set(eNopek, ptsFloat);
             }
-            if (ptsFloat === 0 && poinIdx !== -1 && cols[poinIdx]) {
-              ptsFloat = cleanPointsValue(cols[poinIdx]);
-            }
-
-            if (ptsFloat > 0) {
-              const cName = cleanName(name);
-              const eName = name.toLowerCase();
-              pointsMap.set(cName, ptsFloat);
-              pointsMap.set(eName, ptsFloat);
-              if (nopek) {
-                const cNopek = cleanName(nopek);
-                const eNopek = nopek.toLowerCase();
-                pointsMap.set(`nopek_${cNopek}`, ptsFloat);
-                pointsMap.set(`nopek_${eNopek}`, ptsFloat);
-                pointsMap.set(cNopek, ptsFloat);
-                pointsMap.set(eNopek, ptsFloat);
-              }
-              turboList.push({ name, nopek, clean: cName, cleanNopek: cleanName(nopek), points: ptsFloat });
-            }
+            turboList.push({ name, nopek, clean: cName, cleanNopek: cleanName(nopek), points: ptsFloat });
           }
         }
+      }
     }
   } catch (e) {
     console.warn("TURBO RACE points extraction error:", e);
