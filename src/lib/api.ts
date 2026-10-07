@@ -903,6 +903,26 @@ export async function syncPembekalanProgressToSupabase(item: PembekalanProgress)
       completed: payload.video_completed,
     });
   } catch { }
+
+  // Auto POST to Google Apps Script Webhook (Spreadsheet)
+  try {
+    const webhookUrl = "https://script.google.com/macros/s/AKfycbxvfwHwQmGXjgh0y_RizyMwjEQAlKm1OnjxcFfapTWPxDJhEHZKpTbJcl75p__/exec";
+    if (webhookUrl && (payload.quiz_completed || payload.video_completed)) {
+      const storedUser = getStoredCurrentUser();
+      void fetch(webhookUrl, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "pembekalan",
+          employee_number: storedUser?.employee_number || uId,
+          name: storedUser?.name || storedUser?.employee_number || uId,
+          module_title: `Pembekalan ${normModId.replace(/\D/g, "") || "1"}`,
+          score: payload.quiz_score || 100,
+        }),
+      });
+    }
+  } catch { }
 }
 
 export async function savePembekalanVideoProgress(
