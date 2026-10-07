@@ -731,26 +731,18 @@ export function getStoredPembekalanProgressList(): PembekalanProgress[] {
       return [];
     }
     const parsed: PembekalanProgress[] = JSON.parse(raw);
-    const sanitized = parsed.filter(
-      (p) =>
-        p &&
-        !p.id.startsWith("prog-demo-") &&
-        !["112233", "223344", "334455", "445566"].includes(p.user_id),
-    );
-    if (sanitized.length !== parsed.length) {
-      localStorage.setItem(STORAGE_PEMBEKALAN_PROGRESS_KEY, JSON.stringify(sanitized));
-    }
-    return sanitized;
+    return (parsed || []).filter((p) => p && p.user_id && p.module_id);
   } catch {
     return [];
   }
 }
 
 export function normalizeModuleId(id: string): string {
-  if (!id) return "";
-  const trimmed = id.trim();
+  if (!id) return "pem-1";
+  const trimmed = id.trim().toLowerCase();
   if (trimmed.startsWith("pem-")) return trimmed;
-  if (/^\d+$/.test(trimmed)) return `pem-${trimmed}`;
+  const num = trimmed.replace(/\D/g, "");
+  if (num) return `pem-${num}`;
   return trimmed;
 }
 
