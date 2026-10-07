@@ -747,19 +747,51 @@ export function getStoredPembekalanProgressList(): PembekalanProgress[] {
 }
 
 export async function listPembekalanProgress(userId?: string): Promise<PembekalanProgress[]> {
-  let dbList: PembekalanProgress[] = [];
+  const map = new Map<string, PembekalanProgress>();
 
-  // 1. Fetch from primary table: pembekalan_progress
+  const mergeProgress = (item: PembekalanProgress) => {
+    if (!item.user_id || !item.module_id) return;
+    const key = `${item.user_id}_${item.module_id}`;
+    const existing = map.get(key);
+
+    if (!existing) {
+      map.set(key, { ...item });
+      return;
+    }
+
+    const merged: PembekalanProgress = {
+      id: existing.id || item.id,
+      user_id: item.user_id,
+      module_id: item.module_id,
+      video_progress_percentage: Math.max(existing.video_progress_percentage || 0, item.video_progress_percentage || 0),
+      video_completed: existing.video_completed || item.video_completed,
+      quiz_completed: existing.quiz_completed || item.quiz_completed,
+      quiz_score: Math.max(existing.quiz_score || 0, item.quiz_score || 0),
+      completed_at: existing.completed_at || item.completed_at || null,
+      updated_at: new Date(existing.updated_at || 0) > new Date(item.updated_at || 0) ? existing.updated_at : item.updated_at,
+    };
+
+    map.set(key, merged);
+  };
+
+  // 1. Load local stored progress
+  const stored = getStoredPembekalanProgressList();
+  const filteredStored = userId ? stored.filter((p) => p.user_id === userId) : stored;
+  filteredStored.forEach(mergeProgress);
+
+  // 2. Fetch primary table: pembekalan_progress from Supabase
   try {
     let query = supabase.from("pembekalan_progress").select("*");
     if (userId) {
       query = query.eq("user_id", userId);
     }
     const { data, error } = await query;
-    if (!error && data) dbList = data as PembekalanProgress[];
+    if (!error && data) {
+      (data as PembekalanProgress[]).forEach(mergeProgress);
+    }
   } catch { }
 
-  // 2. Fetch from backup table: video_progress (map health_talk_id to module_id for cross-table resilience)
+  // 3. Fetch backup table: video_progress from Supabase
   try {
     let vpQuery = supabase.from("video_progress").select("*");
     if (userId) {
@@ -770,39 +802,24 @@ export async function listPembekalanProgress(userId?: string): Promise<Pembekala
       vpData.forEach((vp: any) => {
         if (vp.health_talk_id && (vp.health_talk_id.startsWith("pem-") || vp.health_talk_id.length > 0)) {
           const modId = vp.health_talk_id;
-          dbList.push({
+          const key = `${vp.user_id}_${modId}`;
+          const existing = map.get(key);
+
+          mergeProgress({
             id: vp.id || `vp-${vp.user_id}-${modId}`,
             user_id: vp.user_id,
             module_id: modId,
             video_progress_percentage: vp.progress_percentage || 0,
             video_completed: vp.completed || false,
-            quiz_completed: false,
-            quiz_score: 0,
-            completed_at: vp.completed_at || null,
+            quiz_completed: existing?.quiz_completed || false,
+            quiz_score: existing?.quiz_score || 0,
+            completed_at: vp.completed_at || existing?.completed_at || null,
             updated_at: vp.updated_at || new Date().toISOString(),
           });
         }
       });
     }
   } catch { }
-
-  const stored = getStoredPembekalanProgressList();
-  const filteredStored = userId ? stored.filter((p) => p.user_id === userId) : stored;
-
-  const map = new Map<string, PembekalanProgress>();
-  for (const item of [...filteredStored, ...dbList]) {
-    const key = `${item.user_id}_${item.module_id}`;
-    const existing = map.get(key);
-    if (
-      !existing ||
-      (item.quiz_completed && !existing.quiz_completed) ||
-      (item.video_completed && !existing.video_completed) ||
-      (item.video_progress_percentage || 0) > (existing.video_progress_percentage || 0) ||
-      new Date(item.updated_at || 0) > new Date(existing.updated_at || 0)
-    ) {
-      map.set(key, item);
-    }
-  }
 
   return Array.from(map.values());
 }
