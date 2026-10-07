@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { getStoredCurrentUser, getStoredSheetUrl, setStoredCurrentUser } from "./session";
+import { getStoredCurrentUser, getStoredSheetUrl, getStoredWebhookUrl, setStoredCurrentUser } from "./session";
 import type {
   AppNotification,
   AppUser,
@@ -906,7 +906,7 @@ export async function syncPembekalanProgressToSupabase(item: PembekalanProgress)
 
   // Auto POST to Google Apps Script Webhook (Spreadsheet)
   try {
-    const webhookUrl = "https://script.google.com/macros/s/AKfycbxvfwHwQmGXjgh0y_RizyMwjEQAlKm1OnjxcFfapTWPxDJhEHZKpTbJcl75p__/exec";
+    const webhookUrl = getStoredWebhookUrl() || "https://script.google.com/macros/s/AKfycbxvfwHwQmGXjgh0y_RizyMwjEQAlKm1OnjxcFfapTWPxDJhEHZKpTbJcl75p__/exec";
     if (webhookUrl && (payload.quiz_completed || payload.video_completed)) {
       const storedUser = getStoredCurrentUser();
       const empNum = storedUser?.employee_number || uId;

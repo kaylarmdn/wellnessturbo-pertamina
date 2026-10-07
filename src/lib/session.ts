@@ -74,3 +74,17 @@ export function clearStoredSheetUrl() {
   window.localStorage.removeItem(SHEET_KEY);
 }
 
+/* ----------------------------- webhook url ---------------------------- */
+
+const WEBHOOK_KEY = "wellness_turbo_webhook_url";
+
+export function getStoredWebhookUrl(): string | null {
+  if (typeof window === "undefined") return null;
+  return window.localStorage.getItem(WEBHOOK_KEY);
+}
+
+export function setStoredWebhookUrl(url: string) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(WEBHOOK_KEY, url.trim());
+}
+
