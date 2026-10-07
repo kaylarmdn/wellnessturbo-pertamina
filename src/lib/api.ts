@@ -746,23 +746,37 @@ export function getStoredPembekalanProgressList(): PembekalanProgress[] {
   }
 }
 
+export function normalizeModuleId(id: string): string {
+  if (!id) return "";
+  const trimmed = id.trim();
+  if (trimmed.startsWith("pem-")) return trimmed;
+  if (/^\d+$/.test(trimmed)) return `pem-${trimmed}`;
+  return trimmed;
+}
+
+export function isMatchModuleId(a: string, b: string): boolean {
+  if (!a || !b) return false;
+  return normalizeModuleId(a) === normalizeModuleId(b);
+}
+
 export async function listPembekalanProgress(userId?: string): Promise<PembekalanProgress[]> {
   const map = new Map<string, PembekalanProgress>();
 
   const mergeProgress = (item: PembekalanProgress) => {
     if (!item.user_id || !item.module_id) return;
-    const key = `${item.user_id}_${item.module_id}`;
+    const normModId = normalizeModuleId(item.module_id);
+    const key = `${item.user_id.trim().toLowerCase()}_${normModId}`;
     const existing = map.get(key);
 
     if (!existing) {
-      map.set(key, { ...item });
+      map.set(key, { ...item, module_id: normModId });
       return;
     }
 
     const merged: PembekalanProgress = {
       id: existing.id || item.id,
       user_id: item.user_id,
-      module_id: item.module_id,
+      module_id: normModId,
       video_progress_percentage: Math.max(existing.video_progress_percentage || 0, item.video_progress_percentage || 0),
       video_completed: existing.video_completed || item.video_completed,
       quiz_completed: existing.quiz_completed || item.quiz_completed,
@@ -801,14 +815,14 @@ export async function listPembekalanProgress(userId?: string): Promise<Pembekala
     if (!vpError && vpData) {
       vpData.forEach((vp: any) => {
         if (vp.health_talk_id && (vp.health_talk_id.startsWith("pem-") || vp.health_talk_id.length > 0)) {
-          const modId = vp.health_talk_id;
-          const key = `${vp.user_id}_${modId}`;
+          const normModId = normalizeModuleId(vp.health_talk_id);
+          const key = `${vp.user_id.trim().toLowerCase()}_${normModId}`;
           const existing = map.get(key);
 
           mergeProgress({
-            id: vp.id || `vp-${vp.user_id}-${modId}`,
+            id: vp.id || `vp-${vp.user_id}-${normModId}`,
             user_id: vp.user_id,
-            module_id: modId,
+            module_id: normModId,
             video_progress_percentage: vp.progress_percentage || 0,
             video_completed: vp.completed || false,
             quiz_completed: existing?.quiz_completed || false,
@@ -826,7 +840,7 @@ export async function listPembekalanProgress(userId?: string): Promise<Pembekala
 
 export async function getPembekalanProgress(userId: string, moduleId: string): Promise<PembekalanProgress | null> {
   const list = await listPembekalanProgress(userId);
-  return list.find((p) => p.module_id === moduleId) ?? null;
+  return list.find((p) => isMatchModuleId(p.module_id, moduleId)) ?? null;
 }
 
 export async function savePembekalanVideoProgress(
@@ -835,8 +849,9 @@ export async function savePembekalanVideoProgress(
   progressPercentage: number,
   videoCompleted: boolean
 ): Promise<PembekalanProgress> {
+  const normModId = normalizeModuleId(moduleId);
   const list = getStoredPembekalanProgressList();
-  const idx = list.findIndex((p) => p.user_id === userId && p.module_id === moduleId);
+  const idx = list.findIndex((p) => p.user_id === userId && isMatchModuleId(p.module_id, normModId));
   const now = new Date().toISOString();
 
   let existing = idx !== -1 ? list[idx]! : null;
@@ -846,7 +861,7 @@ export async function savePembekalanVideoProgress(
   const item: PembekalanProgress = {
     id: existing ? existing.id : `prog-${Date.now()}`,
     user_id: userId,
-    module_id: moduleId,
+    module_id: normModId,
     video_progress_percentage: newPct,
     video_completed: isVideoDone,
     quiz_completed: existing?.quiz_completed || false,
@@ -877,7 +892,7 @@ export async function savePembekalanVideoProgress(
   try {
     const dbPayload = {
       user_id: userId,
-      module_id: moduleId,
+      module_id: normModId,
       video_progress_percentage: item.video_progress_percentage,
       video_completed: item.video_completed,
       quiz_completed: item.quiz_completed,
@@ -897,7 +912,7 @@ export async function savePembekalanVideoProgress(
   try {
     await saveVideoProgress({
       user_id: userId,
-      health_talk_id: moduleId,
+      health_talk_id: normModId,
       progress_percentage: item.video_progress_percentage,
       completed: item.video_completed,
     });
@@ -913,15 +928,16 @@ export async function submitPembekalanQuiz(
   moduleId: string,
   score: number
 ): Promise<PembekalanProgress> {
+  const normModId = normalizeModuleId(moduleId);
   const list = getStoredPembekalanProgressList();
-  const idx = list.findIndex((p) => p.user_id === userId && p.module_id === moduleId);
+  const idx = list.findIndex((p) => p.user_id === userId && isMatchModuleId(p.module_id, normModId));
   const now = new Date().toISOString();
 
   let existing = idx !== -1 ? list[idx]! : null;
   const item: PembekalanProgress = {
     id: existing ? existing.id : `prog-${Date.now()}`,
     user_id: userId,
-    module_id: moduleId,
+    module_id: normModId,
     video_progress_percentage: 100,
     video_completed: true,
     quiz_completed: true,
@@ -952,7 +968,7 @@ export async function submitPembekalanQuiz(
   try {
     const dbPayload = {
       user_id: userId,
-      module_id: moduleId,
+      module_id: normModId,
       video_progress_percentage: 100,
       video_completed: true,
       quiz_completed: true,
@@ -972,7 +988,7 @@ export async function submitPembekalanQuiz(
   try {
     await saveVideoProgress({
       user_id: userId,
-      health_talk_id: moduleId,
+      health_talk_id: normModId,
       progress_percentage: 100,
       completed: true,
     });

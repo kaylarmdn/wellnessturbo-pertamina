@@ -315,7 +315,8 @@ function PembekalanDetailPage() {
       const score = questions.length > 0 ? Math.round((correctCount / questions.length) * 100) : 100;
 
       await submitPembekalanQuiz(user.id, id, score);
-      queryClient.invalidateQueries({ queryKey: ["pembekalan-progress"] });
+      await progressQuery.refetch();
+      await queryClient.invalidateQueries({ queryKey: ["pembekalan-progress"] });
 
       toast.success("🎉 Quiz Pembekalan Berhasil Diselesaikan! Modul berikutnya kini telah terbuka!");
     } catch (err: any) {

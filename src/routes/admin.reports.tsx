@@ -39,6 +39,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   fetchSpreadsheetLeaderboard,
+  isMatchModuleId,
   listPembekalanModules,
   listPembekalanProgress,
   listUsers,
@@ -220,7 +221,9 @@ function AdminReportsPage() {
   const enrichedProgressList = useMemo(() => {
     return pembekalanProgressList.map((p) => {
       const u = resolveUserInfo(p.user_id);
-      const mod = pembekalanModules.find((m) => m.id === p.module_id);
+      const mod = pembekalanModules.find(
+        (m) => isMatchModuleId(m.id, p.module_id) || m.module_order === Number(p.module_id.replace(/\D/g, ""))
+      );
       return {
         ...p,
         user_name: u.name,
@@ -267,7 +270,9 @@ function AdminReportsPage() {
       // Get completed module orders
       const completedOrders = new Set(
         quizDoneModules.map((p) => {
-          const mod = pembekalanModules.find((m) => m.id === p.module_id);
+          const mod = pembekalanModules.find(
+            (m) => isMatchModuleId(m.id, p.module_id) || m.module_order === Number(p.module_id.replace(/\D/g, ""))
+          );
           return mod?.module_order ?? 1;
         })
       );
@@ -293,7 +298,9 @@ function AdminReportsPage() {
           .sort((a, b) => a - b)
           .map((ord) => {
             const prog = quizDoneModules.find((p) => {
-              const mod = pembekalanModules.find((m) => m.id === p.module_id);
+              const mod = pembekalanModules.find(
+                (m) => isMatchModuleId(m.id, p.module_id) || m.module_order === Number(p.module_id.replace(/\D/g, ""))
+              );
               return mod?.module_order === ord;
             });
             return `M${ord}: ${prog?.quiz_score ?? 100}`;
@@ -675,7 +682,9 @@ function AdminReportsPage() {
         {/* Tab 2: Ringkasan Per Modul Pembekalan */}
         <TabsContent value="per_module" className="space-y-4">
           {pembekalanModules.map((mod) => {
-            const moduleRecords = enrichedProgressList.filter((p) => p.module_id === mod.id);
+            const moduleRecords = enrichedProgressList.filter(
+              (p) => isMatchModuleId(p.module_id, mod.id) || p.module_order === mod.module_order
+            );
             const filteredRecords = moduleRecords.filter((item) => {
               const q = search.toLowerCase().trim();
               return (
