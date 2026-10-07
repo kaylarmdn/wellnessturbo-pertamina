@@ -1161,11 +1161,21 @@ export function buildLeaderboard(
         name: user?.name ?? "Peserta",
         location: user?.location ?? "-",
         function: user?.function ?? "-",
-        points,
       };
+    });
+  return sortLeaderboardRows(results);
+}
+
+export function sortLeaderboardRows(rows: LeaderboardRow[]): LeaderboardRow[] {
+  return [...rows]
+    .sort((a, b) => {
+      const diff = b.points - a.points;
+      if (Math.abs(diff) > 0.000001) return diff;
+      const rA = typeof a.row_index === "number" ? a.row_index : 999999;
+      const rB = typeof b.row_index === "number" ? b.row_index : 999999;
+      return rA - rB;
     })
-    .sort((a, b) => b.points - a.points)
-    .map((row, index) => ({ ...row, rank: index + 1 }));
+    .map((r, idx) => ({ ...r, rank: idx + 1 }));
 }
 
 /* --------------------------------- events --------------------------------- */
@@ -1759,9 +1769,7 @@ export async function fetchGroupLeaderboardFromSheets(sheetUrl: string): Promise
           }
 
           if (rows.length > 0) {
-            return rows
-              .sort((a, b) => b.points - a.points)
-              .map((r, idx) => ({ ...r, rank: idx + 1 }));
+            return sortLeaderboardRows(rows);
           }
         }
       }
@@ -1845,9 +1853,7 @@ export async function fetchGroupLeaderboardFromSheets(sheetUrl: string): Promise
     });
   }
 
-  return groupResults
-    .sort((a, b) => b.points - a.points)
-    .map((r, idx) => ({ ...r, rank: idx + 1 }));
+  return sortLeaderboardRows(groupResults);
 }
 
 export async function fetchSpreadsheetLeaderboard(
@@ -2048,12 +2054,11 @@ export async function fetchSpreadsheetLeaderboard(
         employee_number: nopek,
         gender: userMeta?.gender,
         category: "POIN BFA",
+        row_index: i,
       });
     }
 
-    return rows
-      .sort((a, b) => b.points - a.points)
-      .map((r, idx) => ({ ...r, rank: idx + 1 }));
+    return sortLeaderboardRows(rows);
   }
 
   // Specific handling for POIN DAILY / Best Konsistensi Champion
@@ -2125,13 +2130,12 @@ export async function fetchSpreadsheetLeaderboard(
           bulan2: p2,
           bulan3: p3,
           category: "POIN DAILY",
+          row_index: i,
         });
       }
     }
 
-    return rows
-      .sort((a, b) => b.points - a.points)
-      .map((r, idx) => ({ ...r, rank: idx + 1 }));
+    return sortLeaderboardRows(rows);
   }
 
   const isTurboRace = sheetName === "TURBO RACE" || catLower.includes("race") || catLower.includes("turbo") || catLower.includes("individu");
@@ -2283,12 +2287,11 @@ export async function fetchSpreadsheetLeaderboard(
       nopek,
       employee_number: nopek,
       category: category || "General",
+      row_index: i,
     });
   }
 
-  return rows
-    .sort((a, b) => b.points - a.points)
-    .map((r, idx) => ({ ...r, rank: idx + 1 }));
+  return sortLeaderboardRows(rows);
 }
 
 export function getDummyAdminLeaderboard(): LeaderboardRow[] {
@@ -2730,8 +2733,8 @@ export async function fetchAdminLeaderboardAll(sheetUrl: string): Promise<Leader
   }
 
   return results.length > 0
-    ? results.sort((a, b) => b.points - a.points).map((r, i) => ({ ...r, rank: i + 1 }))
-    : getDummyAdminLeaderboard();
+    ? sortLeaderboardRows(results)
+    : sortLeaderboardRows(getDummyAdminLeaderboard());
 }
 
 export function getDummyBfaLeaderboard(): LeaderboardRow[] {

@@ -124,6 +124,7 @@ export type LeaderboardRow = {
   bulan1?: number | undefined;
   bulan2?: number | undefined;
   bulan3?: number | undefined;
+  row_index?: number | undefined;
 };
 
 export type RewardCategory = "milestone" | "konsistensi";

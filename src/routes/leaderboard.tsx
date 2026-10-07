@@ -15,6 +15,7 @@ import {
   listChallenges,
   listParticipation,
   listUsers,
+  sortLeaderboardRows,
 } from "@/lib/api";
 import { formatDateRange } from "@/lib/format";
 import { getStoredSheetUrl } from "@/lib/session";
@@ -110,9 +111,7 @@ function LeaderboardPage() {
   }
 
   // Re-rank rows
-  const board = [...rawBoard]
-    .sort((a, b) => b.points - a.points)
-    .map((row, index) => ({ ...row, rank: index + 1 }));
+  const board = sortLeaderboardRows(rawBoard);
 
   const me = board.find(
     (r) =>

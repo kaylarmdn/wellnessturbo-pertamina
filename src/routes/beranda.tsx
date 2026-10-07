@@ -41,6 +41,7 @@ import {
   listParticipation,
   listUsers,
   listVideoProgress,
+  sortLeaderboardRows,
   submitWorkerFeedback,
   updateFeedbackStatus,
 } from "@/lib/api";
@@ -215,9 +216,7 @@ function Beranda() {
         ? buildLeaderboard(users.data, participation.data)
         : [];
 
-  const board = [...rawBoard]
-    .sort((a, b) => b.points - a.points)
-    .map((row, idx) => ({ ...row, rank: idx + 1 }));
+  const board = sortLeaderboardRows(rawBoard);
 
   const myRank = board.find(
     (r) =>

@@ -21,7 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { fetchAdminLeaderboardAll, getDummyAdminLeaderboard } from "@/lib/api";
+import { fetchAdminLeaderboardAll, getDummyAdminLeaderboard, sortLeaderboardRows } from "@/lib/api";
 import { getStoredSheetUrl, setStoredSheetUrl } from "@/lib/session";
 import type { LeaderboardRow } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -113,9 +113,7 @@ function AdminLeaderboardPage() {
   });
 
   // Sort and re-rank filtered list
-  const rankedBoard = [...filteredData]
-    .sort((a, b) => b.points - a.points)
-    .map((row, idx) => ({ ...row, rank: idx + 1 }));
+  const rankedBoard = sortLeaderboardRows(filteredData);
 
   // Stats calculation
   const totalCount = rankedBoard.length;
