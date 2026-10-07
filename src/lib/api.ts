@@ -3091,6 +3091,45 @@ export function claimReward(
 
   claims.unshift(newClaim);
   localStorage.setItem(STORAGE_CLAIMS_KEY, JSON.stringify(claims));
+
+  // 1. Dual-Entry: Sync to Supabase reward_claims table
+  try {
+    void supabase.from("reward_claims").upsert({
+      id: newClaim.id,
+      reward_id: newClaim.reward_id,
+      user_id: newClaim.user_id,
+      user_name: newClaim.user_name,
+      user_location: newClaim.user_location,
+      user_function: newClaim.user_function,
+      reward_title: newClaim.reward_title,
+      reward_category: newClaim.reward_category,
+      status: newClaim.status,
+      claimed_at: newClaim.claimed_at,
+    } as never);
+  } catch {}
+
+  // 2. Dual-Entry: Post to Google Spreadsheet Webhook
+  try {
+    const webhookUrl = "https://script.google.com/macros/s/AKfycbxvfwHwQmGXjgh0y_RizyMwjEQAlKm1OnjxcFfapTWPxDJhEHZKpTbJcl75p__/exec";
+    void fetch(webhookUrl, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "insert",
+        sheet: "KLAIM REWARD",
+        data: {
+          "Waktu Klaim": newClaim.claimed_at,
+          "Nama Pekerja": newClaim.user_name,
+          "No Pekerja": newClaim.user_id,
+          "Judul Reward": newClaim.reward_title,
+          "Kategori": newClaim.reward_category,
+          "Status": newClaim.status,
+        },
+      }),
+    });
+  } catch {}
+
   return newClaim;
 }
 
