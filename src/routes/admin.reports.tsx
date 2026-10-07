@@ -243,9 +243,11 @@ function AdminReportsPage() {
   const completed3Participants = useMemo(() => {
     const userProgressGroupMap = new Map<string, PembekalanProgress[]>();
     pembekalanProgressList.forEach((p) => {
-      const list = userProgressGroupMap.get(p.user_id) || [];
+      const uInfo = resolveUserInfo(p.user_id);
+      const canonicalKey = (uInfo.employee_number || p.user_id).trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+      const list = userProgressGroupMap.get(canonicalKey) || [];
       list.push(p);
-      userProgressGroupMap.set(p.user_id, list);
+      userProgressGroupMap.set(canonicalKey, list);
     });
 
     const publishedModulesCount = pembekalanModules.length || 3;
@@ -261,62 +263,60 @@ function AdminReportsPage() {
       module_scores_text: string;
     }> = [];
 
-    userProgressGroupMap.forEach((userProgs, uId) => {
-      const uInfo = resolveUserInfo(uId);
+    userProgressGroupMap.forEach((userProgs) => {
+      const primaryProg = userProgs[0];
+      if (!primaryProg) return;
+      const uInfo = resolveUserInfo(primaryProg.user_id);
 
-      // Filter quiz completed modules
-      const quizDoneModules = userProgs.filter((p) => p.quiz_completed);
+      const doneModulesMap = new Map<number, PembekalanProgress>();
+      userProgs.forEach((p) => {
+        const mod = pembekalanModules.find(
+          (m) => isMatchModuleId(m.id, p.module_id) || m.module_order === Number(p.module_id.replace(/\D/g, ""))
+        );
+        const order = (mod?.module_order ?? Number(p.module_id.replace(/\D/g, ""))) || 1;
+        if (p.quiz_completed || p.video_completed || (p.video_progress_percentage || 0) >= 99) {
+          const prev = doneModulesMap.get(order);
+          if (!prev || (p.quiz_completed && !prev.quiz_completed) || (p.quiz_score || 0) > (prev.quiz_score || 0)) {
+            doneModulesMap.set(order, p);
+          }
+        }
+      });
 
-      // Get completed module orders
-      const completedOrders = new Set(
-        quizDoneModules.map((p) => {
-          const mod = pembekalanModules.find(
-            (m) => isMatchModuleId(m.id, p.module_id) || m.module_order === Number(p.module_id.replace(/\D/g, ""))
-          );
-          return mod?.module_order ?? 1;
-        })
-      );
-
-      // MUST HAVE COMPLETED PEMBEKALAN 1, 2, AND 3!
+      const doneModuleOrders = Array.from(doneModulesMap.keys());
       const hasCompleted123 =
-        (completedOrders.has(1) && completedOrders.has(2) && completedOrders.has(3)) ||
-        quizDoneModules.length >= publishedModulesCount;
+        (doneModulesMap.has(1) && doneModulesMap.has(2) && doneModulesMap.has(3)) ||
+        doneModuleOrders.length >= publishedModulesCount;
 
       if (hasCompleted123) {
-        const scores = quizDoneModules
-          .map((p) => (typeof p.quiz_score === "number" ? p.quiz_score : 100))
-          .filter((s) => !isNaN(s));
+        const scores = [1, 2, 3].map((ord) => {
+          const prog = doneModulesMap.get(ord);
+          return typeof prog?.quiz_score === "number" && prog.quiz_score > 0 ? prog.quiz_score : 100;
+        });
 
-        const avgScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 100;
+        const avgScore = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
 
-        const dates = quizDoneModules
+        const dates = userProgs
           .map((p) => p.completed_at || p.updated_at)
           .filter(Boolean) as string[];
         const latestDate = dates.sort().reverse()[0] || null;
 
-        const scoreDetailTexts = Array.from(completedOrders)
-          .sort((a, b) => a - b)
+        const scoreDetailTexts = [1, 2, 3]
           .map((ord) => {
-            const prog = quizDoneModules.find((p) => {
-              const mod = pembekalanModules.find(
-                (m) => isMatchModuleId(m.id, p.module_id) || m.module_order === Number(p.module_id.replace(/\D/g, ""))
-              );
-              return mod?.module_order === ord;
-            });
+            const prog = doneModulesMap.get(ord);
             return `M${ord}: ${prog?.quiz_score ?? 100}`;
           })
           .join(" | ");
 
         results.push({
-          user_id: uId,
+          user_id: uInfo.employee_number || primaryProg.user_id,
           user_name: uInfo.name,
           employee_number: uInfo.employee_number,
           user_location: uInfo.location,
           user_function: uInfo.function,
-          completed_modules_count: quizDoneModules.length,
+          completed_modules_count: doneModuleOrders.length,
           average_score: avgScore,
           completed_at: latestDate,
-          module_scores_text: scoreDetailTexts || "M1: 100 | M2: 100 | M3: 100",
+          module_scores_text: scoreDetailTexts,
         });
       }
     });

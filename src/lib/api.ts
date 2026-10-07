@@ -791,7 +791,10 @@ export async function listPembekalanProgress(userId?: string): Promise<Pembekala
   // 1. Load local stored progress
   const stored = getStoredPembekalanProgressList();
   const filteredStored = userId ? stored.filter((p) => p.user_id === userId) : stored;
-  filteredStored.forEach(mergeProgress);
+  filteredStored.forEach((item) => {
+    mergeProgress(item);
+    void syncPembekalanProgressToSupabase(item);
+  });
 
   // 2. Fetch primary table: pembekalan_progress from Supabase
   try {
@@ -843,6 +846,73 @@ export async function getPembekalanProgress(userId: string, moduleId: string): P
   return list.find((p) => isMatchModuleId(p.module_id, moduleId)) ?? null;
 }
 
+export async function syncPembekalanProgressToSupabase(item: PembekalanProgress) {
+  if (!item || !item.user_id || !item.module_id) return;
+  const normModId = normalizeModuleId(item.module_id);
+  const uId = item.user_id;
+
+  const storedUser = getStoredCurrentUser();
+  await ensureUserExists(
+    uId,
+    storedUser?.name as string | undefined,
+    storedUser?.employee_number as string | undefined,
+    storedUser?.location as string | undefined,
+    storedUser?.function as string | undefined
+  );
+
+  const payload = {
+    user_id: uId,
+    module_id: normModId,
+    video_progress_percentage: Math.min(100, Math.round(item.video_progress_percentage || 0)),
+    video_completed: !!item.video_completed,
+    quiz_completed: !!item.quiz_completed,
+    quiz_score: typeof item.quiz_score === "number" ? item.quiz_score : (item.quiz_completed ? 100 : 0),
+    completed_at: item.completed_at || (item.quiz_completed || item.video_completed ? new Date().toISOString() : null),
+    updated_at: item.updated_at || new Date().toISOString(),
+  };
+
+  try {
+    const { data: existingRows } = await supabase
+      .from("pembekalan_progress")
+      .select("*")
+      .eq("user_id", uId);
+
+    const existing = (existingRows || []).find((r: any) => isMatchModuleId(r.module_id, normModId));
+
+    if (existing && existing.id) {
+      const updatePayload = {
+        video_progress_percentage: Math.max(existing.video_progress_percentage || 0, payload.video_progress_percentage),
+        video_completed: existing.video_completed || payload.video_completed,
+        quiz_completed: existing.quiz_completed || payload.quiz_completed,
+        quiz_score: Math.max(existing.quiz_score || 0, payload.quiz_score),
+        completed_at: payload.completed_at || existing.completed_at || new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      await supabase.from("pembekalan_progress").update(updatePayload as never).eq("id", existing.id);
+    } else {
+      const insertPayload = {
+        id: item.id || `prog-${uId}-${normModId}`,
+        ...payload,
+      };
+      const insertRes = await supabase.from("pembekalan_progress").insert(insertPayload as never);
+      if (insertRes.error) {
+        await supabase.from("pembekalan_progress").upsert(payload as never);
+      }
+    }
+  } catch (err) {
+    console.error("syncPembekalanProgressToSupabase error:", err);
+  }
+
+  try {
+    await saveVideoProgress({
+      user_id: uId,
+      health_talk_id: normModId,
+      progress_percentage: payload.video_progress_percentage,
+      completed: payload.video_completed,
+    });
+  } catch {}
+}
+
 export async function savePembekalanVideoProgress(
   userId: string,
   moduleId: string,
@@ -878,47 +948,7 @@ export async function savePembekalanVideoProgress(
 
   localStorage.setItem(STORAGE_PEMBEKALAN_PROGRESS_KEY, JSON.stringify(list));
 
-  // Ensure user exists in Supabase users table to satisfy any foreign keys & user reports
-  const storedUser = getStoredCurrentUser();
-  await ensureUserExists(
-    userId,
-    storedUser?.name as string | undefined,
-    storedUser?.employee_number as string | undefined,
-    storedUser?.location as string | undefined,
-    storedUser?.function as string | undefined
-  );
-
-  // 1. Sync to Supabase pembekalan_progress (omit client random `id` to allow clean upsert on `user_id,module_id`)
-  try {
-    const dbPayload = {
-      user_id: userId,
-      module_id: normModId,
-      video_progress_percentage: item.video_progress_percentage,
-      video_completed: item.video_completed,
-      quiz_completed: item.quiz_completed,
-      quiz_score: item.quiz_score ?? 0,
-      completed_at: item.completed_at,
-      updated_at: item.updated_at,
-    };
-    const res = await supabase.from("pembekalan_progress").upsert(dbPayload as never, { onConflict: "user_id,module_id" });
-    if (res.error) {
-      console.error("pembekalan_progress upsert error:", res.error);
-    }
-  } catch (err) {
-    console.error("pembekalan_progress exception:", err);
-  }
-
-  // 2. Dual-sync to Supabase video_progress table for cross-device admin report resilience
-  try {
-    await saveVideoProgress({
-      user_id: userId,
-      health_talk_id: normModId,
-      progress_percentage: item.video_progress_percentage,
-      completed: item.video_completed,
-    });
-  } catch (err) {
-    console.error("video_progress exception:", err);
-  }
+  await syncPembekalanProgressToSupabase(item);
 
   return item;
 }
@@ -954,47 +984,7 @@ export async function submitPembekalanQuiz(
 
   localStorage.setItem(STORAGE_PEMBEKALAN_PROGRESS_KEY, JSON.stringify(list));
 
-  // Ensure user exists in Supabase users table to satisfy any foreign keys & user reports
-  const storedUser = getStoredCurrentUser();
-  await ensureUserExists(
-    userId,
-    storedUser?.name as string | undefined,
-    storedUser?.employee_number as string | undefined,
-    storedUser?.location as string | undefined,
-    storedUser?.function as string | undefined
-  );
-
-  // 1. Sync to Supabase pembekalan_progress (omit client random `id` to allow clean upsert on `user_id,module_id`)
-  try {
-    const dbPayload = {
-      user_id: userId,
-      module_id: normModId,
-      video_progress_percentage: 100,
-      video_completed: true,
-      quiz_completed: true,
-      quiz_score: score,
-      completed_at: now,
-      updated_at: now,
-    };
-    const res = await supabase.from("pembekalan_progress").upsert(dbPayload as never, { onConflict: "user_id,module_id" });
-    if (res.error) {
-      console.error("submitPembekalanQuiz upsert error:", res.error);
-    }
-  } catch (err) {
-    console.error("submitPembekalanQuiz exception:", err);
-  }
-
-  // 2. Dual-sync to Supabase video_progress table
-  try {
-    await saveVideoProgress({
-      user_id: userId,
-      health_talk_id: normModId,
-      progress_percentage: 100,
-      completed: true,
-    });
-  } catch (err) {
-    console.error("submitPembekalanQuiz video_progress exception:", err);
-  }
+  await syncPembekalanProgressToSupabase(item);
 
   return item;
 }
