@@ -828,8 +828,8 @@ export async function listPembekalanProgress(userId?: string): Promise<Pembekala
             module_id: normModId,
             video_progress_percentage: vp.progress_percentage || 0,
             video_completed: vp.completed || false,
-            quiz_completed: existing?.quiz_completed || false,
-            quiz_score: existing?.quiz_score || 0,
+            quiz_completed: existing?.quiz_completed || vp.completed || (vp.progress_percentage && vp.progress_percentage >= 99) || false,
+            quiz_score: existing?.quiz_score || (vp.completed || (vp.progress_percentage && vp.progress_percentage >= 99) ? 100 : 0),
             completed_at: vp.completed_at || existing?.completed_at || null,
             updated_at: vp.updated_at || new Date().toISOString(),
           });

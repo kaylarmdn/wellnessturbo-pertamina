@@ -258,6 +258,7 @@ function AdminReportsPage() {
       user_location: string;
       user_function: string;
       completed_modules_count: number;
+      is_full_completed: boolean;
       average_score: number;
       completed_at: string | null;
       module_scores_text: string;
@@ -282,13 +283,9 @@ function AdminReportsPage() {
         }
       });
 
-      const doneModuleOrders = Array.from(doneModulesMap.keys());
-      const hasCompleted123 =
-        (doneModulesMap.has(1) && doneModulesMap.has(2) && doneModulesMap.has(3)) ||
-        doneModuleOrders.length >= publishedModulesCount;
-
-      if (hasCompleted123) {
-        const scores = [1, 2, 3].map((ord) => {
+      const doneModuleOrders = Array.from(doneModulesMap.keys()).sort((a, b) => a - b);
+      if (doneModuleOrders.length > 0) {
+        const scores = doneModuleOrders.map((ord) => {
           const prog = doneModulesMap.get(ord);
           return typeof prog?.quiz_score === "number" && prog.quiz_score > 0 ? prog.quiz_score : 100;
         });
@@ -303,9 +300,13 @@ function AdminReportsPage() {
         const scoreDetailTexts = [1, 2, 3]
           .map((ord) => {
             const prog = doneModulesMap.get(ord);
-            return `M${ord}: ${prog?.quiz_score ?? 100}`;
+            return prog ? `M${ord}: ${prog.quiz_score ?? 100}` : `M${ord}: -`;
           })
           .join(" | ");
+
+        const isFullCompleted =
+          doneModuleOrders.length >= publishedModulesCount ||
+          (doneModulesMap.has(1) && doneModulesMap.has(2) && doneModulesMap.has(3));
 
         results.push({
           user_id: uInfo.employee_number || primaryProg.user_id,
@@ -314,6 +315,7 @@ function AdminReportsPage() {
           user_location: uInfo.location,
           user_function: uInfo.function,
           completed_modules_count: doneModuleOrders.length,
+          is_full_completed: isFullCompleted,
           average_score: avgScore,
           completed_at: latestDate,
           module_scores_text: scoreDetailTexts,
@@ -321,7 +323,7 @@ function AdminReportsPage() {
       }
     });
 
-    return results;
+    return results.sort((a, b) => (b.completed_modules_count - a.completed_modules_count) || (b.average_score - a.average_score));
   }, [pembekalanProgressList, pembekalanModules, resolveUserInfo]);
 
   // Overall Statistics Metrics
@@ -652,9 +654,15 @@ function AdminReportsPage() {
                             </div>
                           </td>
                           <td className="px-4 py-4 text-center">
-                            <Badge className="bg-emerald-500/15 text-emerald-800 border border-emerald-300 font-bold text-xs px-3 py-1">
-                              ✅ Tuntas 3 Modul (100%)
-                            </Badge>
+                            {item.is_full_completed ? (
+                              <Badge className="bg-emerald-500/15 text-emerald-800 border border-emerald-300 font-bold text-xs px-3 py-1">
+                                ✅ Tuntas 3 Modul (100%)
+                              </Badge>
+                            ) : (
+                              <Badge className="bg-amber-500/15 text-amber-800 border border-amber-300 font-bold text-xs px-3 py-1">
+                                ⏳ {item.completed_modules_count} dari 3 Modul Tuntas
+                              </Badge>
+                            )}
                           </td>
                           <td className="px-4 py-4 text-center">
                             <span className="text-slate-600 font-mono text-[11px] bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200 inline-block font-semibold">
