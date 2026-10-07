@@ -909,17 +909,39 @@ export async function syncPembekalanProgressToSupabase(item: PembekalanProgress)
     const webhookUrl = "https://script.google.com/macros/s/AKfycbxvfwHwQmGXjgh0y_RizyMwjEQAlKm1OnjxcFfapTWPxDJhEHZKpTbJcl75p__/exec";
     if (webhookUrl && (payload.quiz_completed || payload.video_completed)) {
       const storedUser = getStoredCurrentUser();
+      const empNum = storedUser?.employee_number || uId;
+      const userName = storedUser?.name || empNum;
+      const modTitle = `Pembekalan ${normModId.replace(/\D/g, "") || "1"}`;
+      const scoreVal = typeof payload.quiz_score === "number" ? payload.quiz_score : 100;
+
+      const payloadData = {
+        action: "pembekalan",
+        employee_number: empNum,
+        name: userName,
+        module_title: modTitle,
+        score: scoreVal,
+      };
+
+      // 1. Send JSON body as text/plain (avoids CORS preflight blockage in browsers)
       void fetch(webhookUrl, {
         method: "POST",
         mode: "no-cors",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "pembekalan",
-          employee_number: storedUser?.employee_number || uId,
-          name: storedUser?.name || storedUser?.employee_number || uId,
-          module_title: `Pembekalan ${normModId.replace(/\D/g, "") || "1"}`,
-          score: payload.quiz_score || 100,
-        }),
+        headers: { "Content-Type": "text/plain" },
+        body: JSON.stringify(payloadData),
+      });
+
+      // 2. Fallback GET/POST query parameter request (ensures Apps Script e.parameter catches it)
+      const queryParams = new URLSearchParams({
+        action: "pembekalan",
+        employee_number: empNum,
+        name: userName,
+        module_title: modTitle,
+        score: String(scoreVal),
+      }).toString();
+
+      void fetch(`${webhookUrl}?${queryParams}`, {
+        method: "POST",
+        mode: "no-cors",
       });
     }
   } catch { }
