@@ -3,7 +3,7 @@
 **Dokumen Tanggal:** 7 Oktober 2026  
 **Repository:** `kaylarmdn/wellnessturbo-pertamina`  
 **Branch:** `main`  
-**URL Live App:** [https://kaylarmdn-wellnessturbo-pertamina.wellnessturbo.workers.dev](https://kaylarmdn-wellnessturbo-pertamina.wellnessturbo.workers.dev)  
+**URL Live App:** [https://wellnessturbo-pertamina.wellnessturbo.workers.dev](https://wellnessturbo-pertamina.wellnessturbo.workers.dev)  
 **Google Spreadsheet Master:** [Link Spreadsheet](https://docs.google.com/spreadsheets/d/1oXQ8Y2fTiXTIeaJid00gmF3l75lg_2S1HCfAKB5TcMk/edit)
 
 ---
