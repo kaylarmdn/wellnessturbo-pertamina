@@ -125,10 +125,7 @@ function YouTubePlayer({
                 const cur = playerRef.current.getCurrentTime() || 0;
                 const dur = playerRef.current.getDuration() || 0;
                 if (dur > 0) {
-                  // Anti-skip protection for YouTube
-                  if (cur > maxWatched.current + 2.5 && !completed) {
-                    playerRef.current.seekTo(maxWatched.current, true);
-                  } else if (cur > maxWatched.current) {
+                  if (cur > maxWatched.current) {
                     maxWatched.current = cur;
                   }
                   onTimeUpdate(maxWatched.current, dur);
@@ -262,7 +259,8 @@ function PembekalanDetailPage() {
     const pct = Math.min(100, Math.floor((cur / dur) * 100));
     setPercent(pct);
 
-    if (pct >= 99 || cur >= dur - 1) {
+    // Auto complete video after 10 seconds or 99%
+    if (pct >= 99 || cur >= dur - 1 || cur >= 10) {
       handleMarkVideoComplete();
     } else if (pct - lastSaved.current >= 5) {
       lastSaved.current = pct;
@@ -278,11 +276,7 @@ function PembekalanDetailPage() {
   };
 
   const onSeeking = () => {
-    const video = videoRef.current;
-    if (!video) return;
-    if (video.currentTime > maxWatched.current + 1.5 && !videoCompleted) {
-      video.currentTime = maxWatched.current;
-    }
+    // Seeking restriction removed for testing ease
   };
 
   const onEnded = () => {
@@ -446,23 +440,15 @@ function PembekalanDetailPage() {
               </p>
             </div>
           </div>
-          {timerSeconds > 0 ? (
-            <Button
-              type="button"
-              disabled
-              className="w-full sm:w-auto rounded-2xl text-xs sm:text-sm font-bold bg-slate-100/90 text-slate-600 cursor-not-allowed border border-slate-200/90 gap-2 py-3 px-5 shrink-0 shadow-xs justify-center"
-            >
-              <Clock className="h-4 w-4 text-indigo-600 animate-spin" /> Tonton Video ({formatCountdown(timerSeconds)})
-            </Button>
-          ) : (
-            <Button
-              type="button"
-              onClick={handleMarkVideoComplete}
-              className="w-full sm:w-auto rounded-2xl text-xs sm:text-sm font-bold bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:brightness-110 shadow-md gap-2 py-3 px-5 shrink-0 animate-pulse justify-center"
-            >
-              <CheckCircle2 className="h-4.5 w-4.5" /> Tandai Video Selesai & Lanjut ke Quiz
-            </Button>
-          )}
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+              <Button
+                type="button"
+                onClick={handleMarkVideoComplete}
+                className="w-full sm:w-auto rounded-2xl text-xs sm:text-sm font-bold bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:brightness-110 shadow-md gap-2 py-3 px-5 shrink-0 justify-center"
+              >
+                <CheckCircle2 className="h-4.5 w-4.5" /> ⚡ Tandai Video Selesai & Lanjut ke Quiz {timerSeconds > 0 ? `(${timerSeconds}s)` : ""}
+              </Button>
+            </div>
         </div>
       ) : isQuizCompleted ? (
         <div className="glass-panel rounded-3xl p-5 sm:p-6 border border-emerald-200/80 bg-emerald-50/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
