@@ -176,7 +176,7 @@ function PembekalanDetailPage() {
   const [duration, setDuration] = useState(0);
   const [videoCompleted, setVideoCompleted] = useState(false);
   const [videoError, setVideoError] = useState(false);
-  const [timerSeconds, setTimerSeconds] = useState(600);
+  const [timerSeconds, setTimerSeconds] = useState(10);
 
   // Quiz state
   const [userAnswers, setUserAnswers] = useState<Record<string, string>>({});
@@ -210,12 +210,12 @@ function PembekalanDetailPage() {
         setTimerSeconds(0);
       } else {
         setPercent(progressQuery.data.video_progress_percentage || 0);
-        setTimerSeconds(600);
+        setTimerSeconds(10);
       }
     } else {
       setVideoCompleted(false);
       setPercent(0);
-      setTimerSeconds(600);
+      setTimerSeconds(10);
     }
   }, [id, progressQuery.data]);
 
@@ -436,11 +436,11 @@ function PembekalanDetailPage() {
               <p className="text-xs text-slate-500 font-medium leading-relaxed">
                 {timerSeconds > 0 ? (
                   <span>
-                    Harap tonton video minimal selama <strong className="text-indigo-600 font-bold">10 menit</strong>. Tombol konfirmasi akan aktif setelah timer hitung mundur berakhir.
+                    Harap tonton video minimal selama <strong className="text-indigo-600 font-bold">10 detik</strong> (mode testing). Tombol konfirmasi akan aktif setelah timer hitung mundur berakhir.
                   </span>
                 ) : (
                   <span>
-                    Timer 10 menit telah selesai! Silakan tekan tombol konfirmasi untuk membuka Quiz.
+                    Timer 10 detik telah selesai! Silakan tekan tombol konfirmasi untuk membuka Quiz.
                   </span>
                 )}
               </p>
@@ -538,8 +538,8 @@ function PembekalanDetailPage() {
             <h3 className="font-bold text-slate-800 text-base">Quiz Terkunci</h3>
             <p className="text-xs text-slate-600 font-medium max-w-sm mx-auto">
               {timerSeconds > 0
-                ? `Harap tonton video minimal selama 10 menit (sisa ${formatCountdown(timerSeconds)}). Setelah itu, tekan tombol "Tandai Video Selesai" untuk membuka quiz ini.`
-                : `Timer 10 menit telah selesai! Silakan tekan tombol "Tandai Video Selesai & Lanjut ke Quiz" di atas untuk membuka quiz ini.`}
+                ? `Harap tonton video minimal selama 10 detik (sisa ${formatCountdown(timerSeconds)}). Setelah itu, tekan tombol "Tandai Video Selesai" untuk membuka quiz ini.`
+                : `Timer 10 detik telah selesai! Silakan tekan tombol "Tandai Video Selesai & Lanjut ke Quiz" di atas untuk membuka quiz ini.`}
             </p>
           </div>
         ) : isQuizCompleted ? (

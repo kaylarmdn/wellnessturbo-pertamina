@@ -906,33 +906,41 @@ export async function syncPembekalanProgressToSupabase(item: PembekalanProgress)
 
   // Auto POST to Google Apps Script Webhook (Spreadsheet)
   try {
-    const webhookUrl = getStoredWebhookUrl() || "https://script.google.com/macros/s/AKfycbxvfwHwQmGXjgh0y_RizyMwjEQAlKm1OnjxcFfapTWPxDJhEHZKpTbJcl75p__/exec";
+    const defaultWebhookUrl = "https://script.google.com/macros/s/AKfycbxvfwHwQmGXjgh0y_RizyMwjEQAlKm1OnjxcFfapTWPxDJhEHZKpTbJcl75p__/exec";
+    const webhookUrl = getStoredWebhookUrl() || defaultWebhookUrl;
     if (webhookUrl && (payload.quiz_completed || payload.video_completed)) {
-      const storedUser = getStoredCurrentUser();
-      const empNum = storedUser?.employee_number || uId;
-      const userName = storedUser?.name || empNum;
+      const storedUser = getStoredCurrentUser() as any;
+      const empNum = String(storedUser?.employee_number || uId);
+      const userName = String(storedUser?.name || empNum);
       const modTitle = `Pembekalan ${normModId.replace(/\D/g, "") || "1"}`;
       const scoreVal = typeof payload.quiz_score === "number" ? payload.quiz_score : 100;
+      const nowStr = new Date().toLocaleString("id-ID");
 
-      const payloadData = {
-        action: "pembekalan",
-        employee_number: empNum,
-        name: userName,
-        module_title: modTitle,
-        score: scoreVal,
+      // 1. Primary insert payload for Code.gs (action: "insert" & sheet: "LAPORAN PEMBEKALAN")
+      const insertPayload = {
+        action: "insert",
+        sheet: "LAPORAN PEMBEKALAN",
+        data: {
+          "Waktu Selesai": nowStr,
+          "Nama Pekerja": userName,
+          "No. Pekerja (Nopek)": empNum,
+          "Modul": modTitle,
+          "Nilai Quiz": scoreVal,
+          "Status": payload.quiz_completed ? "Selesai" : "Progres",
+        },
       };
 
-      // 1. Send JSON body as text/plain (avoids CORS preflight blockage in browsers)
       void fetch(webhookUrl, {
         method: "POST",
         mode: "no-cors",
         headers: { "Content-Type": "text/plain" },
-        body: JSON.stringify(payloadData),
+        body: JSON.stringify(insertPayload),
       });
 
-      // 2. Fallback GET/POST query parameter request (ensures Apps Script e.parameter catches it)
+      // 2. Fallback GET/POST query parameter request
       const queryParams = new URLSearchParams({
-        action: "pembekalan",
+        action: "insert",
+        sheet: "LAPORAN PEMBEKALAN",
         employee_number: empNum,
         name: userName,
         module_title: modTitle,
@@ -943,6 +951,15 @@ export async function syncPembekalanProgressToSupabase(item: PembekalanProgress)
         method: "POST",
         mode: "no-cors",
       });
+
+      if (webhookUrl !== defaultWebhookUrl) {
+        void fetch(defaultWebhookUrl, {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "text/plain" },
+          body: JSON.stringify(insertPayload),
+        });
+      }
     }
   } catch { }
 }
@@ -3132,7 +3149,7 @@ export function claimReward(
 
   // 2. Dual-Entry: Post to Google Spreadsheet Webhook
   try {
-    const webhookUrl = "https://script.google.com/macros/s/AKfycbxvfwHwQmGXjgh0y_RizyMwjEQAlKm1OnjxcFfapTWPxDJhEHZKpTbJcl75p__/exec";
+    const webhookUrl = getStoredWebhookUrl() || "https://script.google.com/macros/s/AKfycbxvfwHwQmGXjgh0y_RizyMwjEQAlKm1OnjxcFfapTWPxDJhEHZKpTbJcl75p__/exec";
     void fetch(webhookUrl, {
       method: "POST",
       mode: "no-cors",
