@@ -830,6 +830,40 @@ export async function listPembekalanProgress(userId?: string): Promise<Pembekala
     }
   } catch { }
 
+  // 4. Fetch from Google Apps Script (Spreadsheet Tab LAPORAN PEMBEKALAN)
+  try {
+    const appsScriptUrl = "https://script.google.com/macros/s/AKfycbxvfwHwQmGXjgh0y_RizyMwjEQAlKm1OnjxcFfapTWPxDJhEHZKpTbJcI75p__4YAsKiA/exec?action=read&sheet=LAPORAN%20PEMBEKALAN";
+    const sheetRes = await fetch(appsScriptUrl);
+    if (sheetRes.ok) {
+      const json = await sheetRes.json();
+      if (json && json.success && Array.isArray(json.data)) {
+        json.data.forEach((row: any) => {
+          const rawNopek = row["No. Pekerja (Nopek)"] || row["No Pekerja"] || row["employee_number"];
+          const rawName = row["Nama Pekerja"] || row["Nama"] || row["name"];
+          const rawMod = row["Modul"] || row["module_title"] || "pem-1";
+          const rawScore = Number(row["Nilai Quiz"] || row["score"] || 100);
+          const rawTime = row["Waktu Selesai"] || new Date().toISOString();
+          const uId = String(rawNopek || rawName || "unknown").trim();
+          const normModId = normalizeModuleId(String(rawMod));
+
+          if (uId && (!userId || uId.toLowerCase() === userId.trim().toLowerCase())) {
+            mergeProgress({
+              id: `sheet-${uId}-${normModId}`,
+              user_id: uId,
+              module_id: normModId,
+              video_progress_percentage: 100,
+              video_completed: true,
+              quiz_completed: true,
+              quiz_score: isNaN(rawScore) ? 100 : rawScore,
+              completed_at: rawTime,
+              updated_at: rawTime,
+            });
+          }
+        });
+      }
+    }
+  } catch { }
+
   return Array.from(map.values());
 }
 
@@ -906,7 +940,7 @@ export async function syncPembekalanProgressToSupabase(item: PembekalanProgress)
 
   // Auto POST to Google Apps Script Webhook (Spreadsheet)
   try {
-    const defaultWebhookUrl = "https://script.google.com/macros/s/AKfycbxvfwHwQmGXjgh0y_RizyMwjEQAlKm1OnjxcFfapTWPxDJhEHZKpTbJcl75p__/exec";
+    const defaultWebhookUrl = "https://script.google.com/macros/s/AKfycbxvfwHwQmGXjgh0y_RizyMwjEQAlKm1OnjxcFfapTWPxDJhEHZKpTbJcI75p__4YAsKiA/exec";
     const webhookUrl = getStoredWebhookUrl() || defaultWebhookUrl;
     if (webhookUrl && (payload.quiz_completed || payload.video_completed)) {
       const storedUser = getStoredCurrentUser() as any;
@@ -914,7 +948,7 @@ export async function syncPembekalanProgressToSupabase(item: PembekalanProgress)
       const userName = String(storedUser?.name || empNum);
       const modTitle = `Pembekalan ${normModId.replace(/\D/g, "") || "1"}`;
       const scoreVal = typeof payload.quiz_score === "number" ? payload.quiz_score : 100;
-      const nowStr = new Date().toLocaleString("id-ID");
+      const nowStr = new Date().toISOString();
 
       // 1. Primary insert payload for Code.gs (action: "insert" & sheet: "LAPORAN PEMBEKALAN")
       const insertPayload = {
