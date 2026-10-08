@@ -3384,8 +3384,8 @@ const INITIAL_CHALLENGE_ITEMS: ChallengeItem[] = [
     category: "dre",
     week_info: "WAJIB",
     description: "Jalan 2,5 km dengan waktu 30 menit (Wajib bagi seluruh peserta).",
-    frequency_target: "Seminggu 2x",
-    target_count: 2,
+    frequency_target: "Seminggu 5x",
+    target_count: 5,
     is_mandatory: true,
     created_at: new Date().toISOString(),
   },
@@ -3502,7 +3502,19 @@ export function getStoredChallengeItems(): ChallengeItem[] {
       localStorage.setItem(STORAGE_CHALLENGES_KEY, JSON.stringify(INITIAL_CHALLENGE_ITEMS));
       return INITIAL_CHALLENGE_ITEMS;
     }
-    return JSON.parse(raw);
+    const items: ChallengeItem[] = JSON.parse(raw);
+    let updated = false;
+    items.forEach((item) => {
+      if ((item.id === "ch-dre-1" || item.category === "dre") && item.target_count !== 5) {
+        item.frequency_target = "Seminggu 5x";
+        item.target_count = 5;
+        updated = true;
+      }
+    });
+    if (updated) {
+      localStorage.setItem(STORAGE_CHALLENGES_KEY, JSON.stringify(items));
+    }
+    return items;
   } catch {
     return INITIAL_CHALLENGE_ITEMS;
   }
