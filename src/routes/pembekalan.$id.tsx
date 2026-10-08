@@ -173,7 +173,7 @@ function PembekalanDetailPage() {
   const [duration, setDuration] = useState(0);
   const [videoCompleted, setVideoCompleted] = useState(false);
   const [videoError, setVideoError] = useState(false);
-  const [timerSeconds, setTimerSeconds] = useState(10);
+  const [timerSeconds, setTimerSeconds] = useState(600);
 
   // Quiz state
   const [userAnswers, setUserAnswers] = useState<Record<string, string>>({});
@@ -207,12 +207,12 @@ function PembekalanDetailPage() {
         setTimerSeconds(0);
       } else {
         setPercent(progressQuery.data.video_progress_percentage || 0);
-        setTimerSeconds(10);
+        setTimerSeconds(600);
       }
     } else {
       setVideoCompleted(false);
       setPercent(0);
-      setTimerSeconds(10);
+      setTimerSeconds(600);
     }
   }, [id, progressQuery.data]);
 
@@ -259,8 +259,7 @@ function PembekalanDetailPage() {
     const pct = Math.min(100, Math.floor((cur / dur) * 100));
     setPercent(pct);
 
-    // Auto complete video after 10 seconds or 99%
-    if (pct >= 99 || cur >= dur - 1 || cur >= 10) {
+    if (pct >= 99 || cur >= dur - 1) {
       handleMarkVideoComplete();
     } else if (pct - lastSaved.current >= 5) {
       lastSaved.current = pct;
@@ -426,32 +425,37 @@ function PembekalanDetailPage() {
               <PlayCircle className="h-6 w-6" />
             </div>
             <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm sm:text-base font-extrabold text-slate-800">Status Menonton Video</h3>
-                <Badge className="bg-amber-500 text-white font-bold text-[10px] px-2 py-0.5 rounded-full">MODE TESTING 10 DETIK (v2.1)</Badge>
-              </div>
+              <h3 className="text-sm sm:text-base font-extrabold text-slate-800">Status Menonton Video</h3>
               <p className="text-xs text-slate-500 font-medium leading-relaxed">
                 {timerSeconds > 0 ? (
                   <span>
-                    Harap tonton video minimal selama <strong className="text-indigo-600 font-bold">10 detik</strong> (mode testing). Tombol konfirmasi akan aktif setelah timer hitung mundur berakhir.
+                    Harap tonton video minimal selama <strong className="text-indigo-600 font-bold">10 menit</strong>. Tombol konfirmasi akan aktif setelah timer hitung mundur berakhir.
                   </span>
                 ) : (
                   <span>
-                    Timer 10 detik telah selesai! Silakan tekan tombol konfirmasi untuk membuka Quiz.
+                    Timer 10 menit telah selesai! Silakan tekan tombol konfirmasi untuk membuka Quiz.
                   </span>
                 )}
               </p>
             </div>
           </div>
-            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-              <Button
-                type="button"
-                onClick={handleMarkVideoComplete}
-                className="w-full sm:w-auto rounded-2xl text-xs sm:text-sm font-bold bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:brightness-110 shadow-md gap-2 py-3 px-5 shrink-0 justify-center"
-              >
-                <CheckCircle2 className="h-4.5 w-4.5" /> ⚡ Tandai Video Selesai & Lanjut ke Quiz {timerSeconds > 0 ? `(${timerSeconds}s)` : ""}
-              </Button>
-            </div>
+          {timerSeconds > 0 ? (
+            <Button
+              type="button"
+              disabled
+              className="w-full sm:w-auto rounded-2xl text-xs sm:text-sm font-bold bg-slate-100/90 text-slate-600 cursor-not-allowed border border-slate-200/90 gap-2 py-3 px-5 shrink-0 shadow-xs justify-center"
+            >
+              <Clock className="h-4 w-4 text-indigo-600 animate-spin" /> Tonton Video ({formatCountdown(timerSeconds)})
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              onClick={handleMarkVideoComplete}
+              className="w-full sm:w-auto rounded-2xl text-xs sm:text-sm font-bold bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:brightness-110 shadow-md gap-2 py-3 px-5 shrink-0 animate-pulse justify-center"
+            >
+              <CheckCircle2 className="h-4.5 w-4.5" /> Tandai Video Selesai & Lanjut ke Quiz
+            </Button>
+          )}
         </div>
       ) : isQuizCompleted ? (
         <div className="glass-panel rounded-3xl p-5 sm:p-6 border border-emerald-200/80 bg-emerald-50/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
@@ -527,8 +531,8 @@ function PembekalanDetailPage() {
             <h3 className="font-bold text-slate-800 text-base">Quiz Terkunci</h3>
             <p className="text-xs text-slate-600 font-medium max-w-sm mx-auto">
               {timerSeconds > 0
-                ? `Harap tonton video minimal selama 10 detik (sisa ${formatCountdown(timerSeconds)}). Setelah itu, tekan tombol "Tandai Video Selesai" untuk membuka quiz ini.`
-                : `Timer 10 detik telah selesai! Silakan tekan tombol "Tandai Video Selesai & Lanjut ke Quiz" di atas untuk membuka quiz ini.`}
+                ? `Harap tonton video minimal selama 10 menit (sisa ${formatCountdown(timerSeconds)}). Setelah itu, tekan tombol "Tandai Video Selesai" untuk membuka quiz ini.`
+                : `Timer 10 menit telah selesai! Silakan tekan tombol "Tandai Video Selesai & Lanjut ke Quiz" di atas untuk membuka quiz ini.`}
             </p>
           </div>
         ) : isQuizCompleted ? (
