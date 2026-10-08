@@ -426,7 +426,10 @@ function PembekalanDetailPage() {
               <PlayCircle className="h-6 w-6" />
             </div>
             <div className="space-y-1">
-              <h3 className="text-sm sm:text-base font-extrabold text-slate-800">Status Menonton Video</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm sm:text-base font-extrabold text-slate-800">Status Menonton Video</h3>
+                <Badge className="bg-amber-500 text-white font-bold text-[10px] px-2 py-0.5 rounded-full">MODE TESTING 10 DETIK (v2.1)</Badge>
+              </div>
               <p className="text-xs text-slate-500 font-medium leading-relaxed">
                 {timerSeconds > 0 ? (
                   <span>
