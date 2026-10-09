@@ -311,7 +311,12 @@ function PembekalanDetailPage() {
         }
       });
 
-      const score = questions.length > 0 ? Math.round((correctCount / questions.length) * 100) : 100;
+      if (questions.length === 0) {
+        toast.error("Tidak dapat mengirim quiz karena pertanyaan belum tersedia.");
+        return;
+      }
+
+      const score = Math.round((correctCount / questions.length) * 100);
 
       setIsResetLocally(false);
       await submitPembekalanQuiz(user.id, id, score);
@@ -324,24 +329,6 @@ function PembekalanDetailPage() {
       toast.error(`Gagal mengirim quiz: ${err?.message || "Terjadi kesalahan"}`);
     } finally {
       setSubmittingQuiz(false);
-    }
-  };
-
-  const handleRetakeQuiz = async () => {
-    if (!user) return;
-    try {
-      setIsResetLocally(true);
-      setUserAnswers({});
-      await resetPembekalanQuiz(user.id, id);
-      await queryClient.invalidateQueries({ queryKey: ["pembekalan-progress"] });
-      await progressQuery.refetch();
-      toast.info("Quiz direset. Silakan kerjakan kembali pertanyaan quiz.");
-      setTimeout(() => {
-        quizRef.current?.scrollIntoView({ behavior: "smooth" });
-      }, 150);
-    } catch (err: any) {
-      setIsResetLocally(false);
-      toast.error(`Gagal mereset quiz: ${err?.message || "Terjadi kesalahan"}`);
     }
   };
 
@@ -604,15 +591,6 @@ function PembekalanDetailPage() {
                   </Link>
                 </Button>
               )}
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleRetakeQuiz}
-                className="rounded-2xl h-auto min-h-[54px] py-3.5 px-5 font-bold text-xs sm:text-sm border-indigo-200 text-indigo-700 hover:bg-indigo-50 flex items-center justify-center gap-2 shrink-0"
-              >
-                <RefreshCw className="h-4 w-4" />
-                <span>Kerjakan Ulang Quiz</span>
-              </Button>
             </div>
           </div>
         ) : (

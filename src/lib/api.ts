@@ -950,7 +950,7 @@ export async function syncPembekalanProgressToSupabase(item: PembekalanProgress)
       video_progress_percentage: Math.min(100, Math.round(item.video_progress_percentage || 0)),
       video_completed: !!item.video_completed,
       quiz_completed: !!item.quiz_completed,
-      quiz_score: typeof item.quiz_score === "number" ? item.quiz_score : (item.quiz_completed ? 100 : null),
+      quiz_score: typeof item.quiz_score === "number" ? item.quiz_score : null,
       completed_at: item.completed_at || (item.quiz_completed ? new Date().toISOString() : null),
       updated_at: item.updated_at || new Date().toISOString(),
     };
