@@ -343,6 +343,153 @@ export type Database = {
           },
         ]
       }
+      pembekalan_modules: {
+        Row: {
+          category: string
+          created_at: string
+          description: string
+          duration: number
+          id: string
+          module_order: number
+          status: string
+          thumbnail_url: string | null
+          title: string
+          updated_at: string
+          video_url: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          description?: string
+          duration?: number
+          id?: string
+          module_order?: number
+          status?: string
+          thumbnail_url?: string | null
+          title?: string
+          updated_at?: string
+          video_url?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string
+          duration?: number
+          id?: string
+          module_order?: number
+          status?: string
+          thumbnail_url?: string | null
+          title?: string
+          updated_at?: string
+          video_url?: string
+        }
+        Relationships: []
+      }
+      pembekalan_quiz_questions: {
+        Row: {
+          correct_answer: string
+          created_at: string
+          explanation: string | null
+          id: string
+          module_id: string
+          option_a: string
+          option_b: string
+          option_c: string
+          option_d: string
+          question: string
+          question_order: number
+        }
+        Insert: {
+          correct_answer: string
+          created_at?: string
+          explanation?: string | null
+          id?: string
+          module_id?: string
+          option_a?: string
+          option_b?: string
+          option_c?: string
+          option_d?: string
+          question?: string
+          question_order?: number
+        }
+        Update: {
+          correct_answer?: string
+          created_at?: string
+          explanation?: string | null
+          id?: string
+          module_id?: string
+          option_a?: string
+          option_b?: string
+          option_c?: string
+          option_d?: string
+          question?: string
+          question_order?: number
+        }
+        Relationships: []
+      }
+      pembekalan_progress: {
+        Row: {
+          completed_at: string | null
+          id: string
+          module_id: string
+          quiz_completed: boolean
+          quiz_score: number | null
+          updated_at: string
+          user_id: string
+          video_completed: boolean
+          video_progress_percentage: number
+        }
+        Insert: {
+          completed_at?: string | null
+          id?: string
+          module_id?: string
+          quiz_completed?: boolean
+          quiz_score?: number | null
+          updated_at?: string
+          user_id?: string
+          video_completed?: boolean
+          video_progress_percentage?: number
+        }
+        Update: {
+          completed_at?: string | null
+          id?: string
+          module_id?: string
+          quiz_completed?: boolean
+          quiz_score?: number | null
+          updated_at?: string
+          user_id?: string
+          video_completed?: boolean
+          video_progress_percentage?: number
+        }
+        Relationships: []
+      }
+      reward_claims: {
+        Row: {
+          claimed_at: string
+          id: string
+          points_spent: number
+          reward_id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          claimed_at?: string
+          id?: string
+          points_spent?: number
+          reward_id?: string
+          status?: string
+          user_id?: string
+        }
+        Update: {
+          claimed_at?: string
+          id?: string
+          points_spent?: number
+          reward_id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

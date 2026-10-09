@@ -55,7 +55,7 @@ export type PembekalanProgress = {
   video_progress_percentage: number;
   video_completed: boolean;
   quiz_completed: boolean;
-  quiz_score?: number;
+  quiz_score?: number | undefined;
   completed_at?: string | null;
   updated_at: string;
 };

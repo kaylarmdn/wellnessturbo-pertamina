@@ -149,7 +149,7 @@ function AdminRewardPage() {
       setRewardForm({
         title: "",
         description: "",
-        category: "quiz",
+        category: "milestone",
         points_required: 50,
         image_url: "",
       });

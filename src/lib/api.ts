@@ -664,16 +664,22 @@ export function getStoredPembekalanQuestions(moduleId?: string): PembekalanQuizQ
       localStorage.setItem(STORAGE_PEMBEKALAN_QUESTIONS_KEY, JSON.stringify(list));
     }
 
-    if (moduleId) list = list.filter((q) => q.module_id === moduleId);
+    if (moduleId) list = list.filter((q) => isMatchModuleId(q.module_id, moduleId));
     return list.sort((a, b) => a.question_order - b.question_order);
   } catch {
-    return INITIAL_PEMBEKALAN_QUESTIONS.filter((q) => !moduleId || q.module_id === moduleId);
+    return INITIAL_PEMBEKALAN_QUESTIONS.filter((q) => !moduleId || isMatchModuleId(q.module_id, moduleId));
   }
 }
 
 export async function listPembekalanQuizQuestions(moduleId: string): Promise<PembekalanQuizQuestion[]> {
+  const normId = normalizeModuleId(moduleId);
+  const rawNum = normId.replace(/\D/g, "");
   try {
-    const { data, error } = await supabase.from("pembekalan_quiz_questions").select("*").eq("module_id", moduleId).order("question_order");
+    const { data, error } = await supabase
+      .from("pembekalan_quiz_questions")
+      .select("*")
+      .or(`module_id.eq.${normId},module_id.eq.${moduleId},module_id.eq.${rawNum}`)
+      .order("question_order");
     if (!error && data && data.length > 0) return data as PembekalanQuizQuestion[];
   } catch { }
 
@@ -785,16 +791,22 @@ export async function listPembekalanProgress(userId?: string): Promise<Pembekala
       return;
     }
 
+    const existingTime = new Date(existing.updated_at || 0).getTime();
+    const itemTime = new Date(item.updated_at || 0).getTime();
+
+    const primary = itemTime > existingTime ? item : existing;
+    const secondary = itemTime > existingTime ? existing : item;
+
     const merged: PembekalanProgress = {
-      id: existing.id || item.id,
-      user_id: item.user_id,
+      id: primary.id || secondary.id,
+      user_id: primary.user_id,
       module_id: normModId,
       video_progress_percentage: Math.max(existing.video_progress_percentage || 0, item.video_progress_percentage || 0),
       video_completed: existing.video_completed || item.video_completed,
-      quiz_completed: existing.quiz_completed || item.quiz_completed,
-      quiz_score: typeof item.quiz_score === "number" ? item.quiz_score : existing.quiz_score,
-      completed_at: existing.completed_at || item.completed_at || null,
-      updated_at: new Date(existing.updated_at || 0) > new Date(item.updated_at || 0) ? existing.updated_at : item.updated_at,
+      quiz_completed: primary.quiz_completed,
+      quiz_score: primary.quiz_score !== undefined ? primary.quiz_score : secondary.quiz_score,
+      completed_at: primary.completed_at || secondary.completed_at || null,
+      updated_at: primary.updated_at || secondary.updated_at || new Date().toISOString(),
     };
 
     map.set(key, merged);
@@ -911,22 +923,11 @@ export async function syncPembekalanProgressToSupabase(item: PembekalanProgress)
   const storedUser = getStoredCurrentUser();
   await ensureUserExists(
     uId,
-    storedUser?.name as string | undefined,
-    storedUser?.employee_number as string | undefined,
-    storedUser?.location as string | undefined,
-    storedUser?.function as string | undefined
+    storedUser?.["name"] as string | undefined,
+    storedUser?.["employee_number"] as string | undefined,
+    storedUser?.["location"] as string | undefined,
+    storedUser?.["function"] as string | undefined
   );
-
-  const payload = {
-    user_id: uId,
-    module_id: normModId,
-    video_progress_percentage: Math.min(100, Math.round(item.video_progress_percentage || 0)),
-    video_completed: !!item.video_completed,
-    quiz_completed: !!item.quiz_completed,
-    quiz_score: typeof item.quiz_score === "number" ? item.quiz_score : (item.quiz_completed ? 100 : 0),
-    completed_at: item.completed_at || (item.quiz_completed ? new Date().toISOString() : null),
-    updated_at: item.updated_at || new Date().toISOString(),
-  };
 
   try {
     const { data: existingRows } = await supabase
@@ -936,25 +937,31 @@ export async function syncPembekalanProgressToSupabase(item: PembekalanProgress)
 
     const existing = (existingRows || []).find((r: any) => isMatchModuleId(r.module_id, normModId));
 
+    const payload = {
+      id: item.id || existing?.id || `prog-${uId}-${normModId}`,
+      user_id: uId,
+      module_id: normModId,
+      video_progress_percentage: Math.min(100, Math.round(item.video_progress_percentage || 0)),
+      video_completed: !!item.video_completed,
+      quiz_completed: !!item.quiz_completed,
+      quiz_score: typeof item.quiz_score === "number" ? item.quiz_score : (item.quiz_completed ? 100 : null),
+      completed_at: item.completed_at || (item.quiz_completed ? new Date().toISOString() : null),
+      updated_at: item.updated_at || new Date().toISOString(),
+    };
+
     if (existing && existing.id) {
       const updatePayload = {
+        ...payload,
         video_progress_percentage: Math.max(existing.video_progress_percentage || 0, payload.video_progress_percentage),
         video_completed: existing.video_completed || payload.video_completed,
         quiz_completed: payload.quiz_completed,
         quiz_score: payload.quiz_completed ? payload.quiz_score : existing.quiz_score,
-        completed_at: payload.completed_at || existing.completed_at || new Date().toISOString(),
+        completed_at: payload.completed_at || existing.completed_at || null,
         updated_at: new Date().toISOString(),
       };
-      await supabase.from("pembekalan_progress").update(updatePayload as never).eq("id", existing.id);
+      await supabase.from("pembekalan_progress").upsert(updatePayload as never);
     } else {
-      const insertPayload = {
-        id: item.id || `prog-${uId}-${normModId}`,
-        ...payload,
-      };
-      const insertRes = await supabase.from("pembekalan_progress").insert(insertPayload as never);
-      if (insertRes.error) {
-        await supabase.from("pembekalan_progress").upsert(payload as never);
-      }
+      await supabase.from("pembekalan_progress").upsert(payload as never);
     }
   } catch (err) {
     console.error("syncPembekalanProgressToSupabase error:", err);
@@ -964,8 +971,8 @@ export async function syncPembekalanProgressToSupabase(item: PembekalanProgress)
     await saveVideoProgress({
       user_id: uId,
       health_talk_id: normModId,
-      progress_percentage: payload.video_progress_percentage,
-      completed: payload.video_completed,
+      progress_percentage: item.video_progress_percentage || 0,
+      completed: !!item.video_completed,
     });
   } catch { }
 }
@@ -1280,7 +1287,7 @@ export function buildLeaderboard(
   for (const row of scoped) {
     totals.set(row.user_id, (totals.get(row.user_id) ?? 0) + row.points);
   }
-  return [...totals.entries()]
+  const results: LeaderboardRow[] = [...totals.entries()]
     .map(([user_id, points]) => {
       const user = users.find((u) => u.id === user_id);
       return {
@@ -1288,6 +1295,8 @@ export function buildLeaderboard(
         name: user?.name ?? "Peserta",
         location: user?.location ?? "-",
         function: user?.function ?? "-",
+        points,
+        rank: 0,
       };
     });
   return sortLeaderboardRows(results);
@@ -2140,7 +2149,7 @@ export async function fetchSpreadsheetLeaderboard(
       let name = (cols[0] && cols[0].trim()) ? cols[0].trim() : (cols[nameIdx] ?? cols[1] ?? "");
       if (!isValidParticipantName(name)) continue;
 
-      let nopek = (cols[1] && cols[1].trim()) ? cols[1].trim() : (nopekIdx !== -1 && cols[nopekIdx] ? cols[nopekIdx].trim() : "");
+      let nopek = (cols[1] && cols[1].trim()) ? cols[1].trim() : (nopekIdx !== -1 && cols[nopekIdx] ? cols[nopekIdx]!.trim() : "");
       let location = (cols[2] && cols[2].trim()) ? cols[2].trim() : (locIdx !== -1 ? (cols[locIdx] ?? "-") : "-");
       let func = funcIdx !== -1 ? (cols[funcIdx] ?? "-") : "-";
 
@@ -2214,7 +2223,7 @@ export async function fetchSpreadsheetLeaderboard(
 
       let location = locIdx !== -1 ? (cols[locIdx] ?? "-") : cols[2] ?? "-";
       let func = funcIdx !== -1 ? (cols[funcIdx] ?? "-") : "-";
-      let nopek = (nopekIdx !== -1 && cols[nopekIdx]) ? cols[nopekIdx].trim() : "";
+      let nopek = (nopekIdx !== -1 && cols[nopekIdx]) ? cols[nopekIdx]!.trim() : "";
 
       const userMeta = userMetaMap.byName.get(cleanKey(name)) ||
         userMetaMap.byName.get(name.toLowerCase()) ||
@@ -2278,7 +2287,7 @@ export async function fetchSpreadsheetLeaderboard(
 
     let location = cols[locIdx] ?? cols[3] ?? "-";
     let func = funcIdx !== -1 ? (cols[funcIdx] ?? "-") : "-";
-    let nopek = (nopekIdx !== -1 && cols[nopekIdx]) ? cols[nopekIdx].trim() : (cols[0] && !isNaN(Number(cols[0].trim())) ? cols[0].trim() : "");
+    let nopek = (nopekIdx !== -1 && cols[nopekIdx]) ? cols[nopekIdx]!.trim() : (cols[0] && !isNaN(Number(cols[0].trim())) ? cols[0].trim() : "");
 
     let points = 0;
 
@@ -2697,7 +2706,7 @@ export async function fetchAdminLeaderboardAll(sheetUrl: string): Promise<Leader
           const rawName = cols[nameIdx] ?? cols[1] ?? cols[0];
           if (!isValidParticipantName(rawName)) continue;
           const name = rawName!.trim();
-          const nopek = (nopekIdx !== -1 && cols[nopekIdx]) ? cols[nopekIdx].trim() : (cols[0] && !isNaN(Number(cols[0].trim())) ? cols[0].trim() : "");
+          const nopek = (nopekIdx !== -1 && cols[nopekIdx]) ? cols[nopekIdx]!.trim() : (cols[0] && !isNaN(Number(cols[0].trim())) ? cols[0].trim() : "");
 
           let ptsFloat = 0;
           // Extract points strictly from Column P (index 15) starting from Row 2

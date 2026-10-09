@@ -302,7 +302,9 @@ function PembekalanDetailPage() {
     try {
       let correctCount = 0;
       questions.forEach((q) => {
-        if (userAnswers[q.id] === q.correct_answer) {
+        const userAns = String(userAnswers[q.id] || "").trim().toUpperCase();
+        const correctAns = String(q.correct_answer || "").trim().toUpperCase();
+        if (userAns && userAns === correctAns) {
           correctCount++;
         }
       });
@@ -310,8 +312,8 @@ function PembekalanDetailPage() {
       const score = questions.length > 0 ? Math.round((correctCount / questions.length) * 100) : 100;
 
       await submitPembekalanQuiz(user.id, id, score);
-      await progressQuery.refetch();
       await queryClient.invalidateQueries({ queryKey: ["pembekalan-progress"] });
+      await progressQuery.refetch();
 
       toast.success("🎉 Quiz Pembekalan Berhasil Diselesaikan! Modul berikutnya kini telah terbuka!");
     } catch (err: any) {
