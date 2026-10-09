@@ -876,7 +876,13 @@ export async function listPembekalanProgress(userId?: string): Promise<Pembekala
           const rawMod = row["Modul"] || row["module_title"] || "pem-1";
           const rawScore = Number(row["Nilai Quiz"] || row["score"] || 0);
           const rawStatus = String(row["Status"] || "").trim().toLowerCase();
-          const rawTime = row["Waktu Selesai"] || new Date().toISOString();
+          let rawTime = "2020-01-01T00:00:00.000Z";
+          if (row["Waktu Selesai"]) {
+            const parsedTs = new Date(row["Waktu Selesai"]).getTime();
+            if (!isNaN(parsedTs) && parsedTs > 0) {
+              rawTime = new Date(parsedTs).toISOString();
+            }
+          }
           const uId = String(rawNopek || "").trim();
           const uName = String(rawName || "").trim();
           const normModId = normalizeModuleId(String(rawMod));

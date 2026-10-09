@@ -180,6 +180,7 @@ function PembekalanDetailPage() {
   // Quiz state
   const [userAnswers, setUserAnswers] = useState<Record<string, string>>({});
   const [submittingQuiz, setSubmittingQuiz] = useState(false);
+  const [isResetLocally, setIsResetLocally] = useState(false);
 
   const modQuery = useQuery({ queryKey: ["pembekalan-module", id], queryFn: () => getPembekalanModule(id) });
   const allModulesQuery = useQuery({ queryKey: ["pembekalan-modules"], queryFn: () => listPembekalanModules(false) });
@@ -200,6 +201,7 @@ function PembekalanDetailPage() {
     setUserAnswers({});
     setSubmittingQuiz(false);
     setVideoError(false);
+    setIsResetLocally(false);
 
     if (progressQuery.data) {
       const isDone = progressQuery.data.video_completed;
@@ -311,6 +313,7 @@ function PembekalanDetailPage() {
 
       const score = questions.length > 0 ? Math.round((correctCount / questions.length) * 100) : 100;
 
+      setIsResetLocally(false);
       await submitPembekalanQuiz(user.id, id, score);
       await queryClient.invalidateQueries({ queryKey: ["pembekalan-progress"] });
       await progressQuery.refetch();
@@ -327,15 +330,17 @@ function PembekalanDetailPage() {
   const handleRetakeQuiz = async () => {
     if (!user) return;
     try {
-      await resetPembekalanQuiz(user.id, id);
+      setIsResetLocally(true);
       setUserAnswers({});
-      await progressQuery.refetch();
+      await resetPembekalanQuiz(user.id, id);
       await queryClient.invalidateQueries({ queryKey: ["pembekalan-progress"] });
+      await progressQuery.refetch();
       toast.info("Quiz direset. Silakan kerjakan kembali pertanyaan quiz.");
       setTimeout(() => {
         quizRef.current?.scrollIntoView({ behavior: "smooth" });
       }, 150);
     } catch (err: any) {
+      setIsResetLocally(false);
       toast.error(`Gagal mereset quiz: ${err?.message || "Terjadi kesalahan"}`);
     }
   };
@@ -363,8 +368,8 @@ function PembekalanDetailPage() {
   const allModules = [...(allModulesQuery.data ?? [])].sort((a, b) => a.module_order - b.module_order);
   const nextModule = allModules.find((m) => m.module_order > mod.module_order);
 
-  const isQuizCompleted = progressQuery.data?.quiz_completed ?? false;
-  const quizScore = progressQuery.data?.quiz_score ?? 0;
+  const isQuizCompleted = isResetLocally ? false : (progressQuery.data?.quiz_completed ?? false);
+  const quizScore = isResetLocally ? 0 : (progressQuery.data?.quiz_score ?? 0);
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 animate-fade-in pb-12">
