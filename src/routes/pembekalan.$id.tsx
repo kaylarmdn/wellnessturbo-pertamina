@@ -15,6 +15,7 @@ import {
   PauseCircle,
   Play,
   PlayCircle,
+  RefreshCw,
   Sparkles,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -29,6 +30,7 @@ import {
   getPembekalanProgress,
   listPembekalanModules,
   listPembekalanQuizQuestions,
+  resetPembekalanQuiz,
   savePembekalanVideoProgress,
   submitPembekalanQuiz,
 } from "@/lib/api";
@@ -320,6 +322,22 @@ function PembekalanDetailPage() {
     }
   };
 
+  const handleRetakeQuiz = async () => {
+    if (!user) return;
+    try {
+      await resetPembekalanQuiz(user.id, id);
+      setUserAnswers({});
+      await progressQuery.refetch();
+      await queryClient.invalidateQueries({ queryKey: ["pembekalan-progress"] });
+      toast.info("Quiz direset. Silakan kerjakan kembali pertanyaan quiz.");
+      setTimeout(() => {
+        quizRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 150);
+    } catch (err: any) {
+      toast.error(`Gagal mereset quiz: ${err?.message || "Terjadi kesalahan"}`);
+    }
+  };
+
   if (modQuery.isLoading) {
     return <p className="text-sm text-slate-500 p-8 text-center font-medium">Memuat materi pembekalan…</p>;
   }
@@ -557,27 +575,38 @@ function PembekalanDetailPage() {
               </p>
             </div>
 
-            {nextModule ? (
+            <div className="flex flex-col sm:flex-row gap-3">
+              {nextModule ? (
+                <Button
+                  asChild
+                  className="flex-1 rounded-2xl h-auto min-h-[54px] py-3.5 px-5 font-black text-xs sm:text-base bg-gradient-to-r from-sky-500 via-indigo-600 to-purple-600 hover:brightness-110 shadow-lg text-white flex items-center justify-center text-center gap-2 whitespace-normal break-words"
+                >
+                  <Link to="/pembekalan/$id" params={{ id: nextModule.id }} className="w-full flex items-center justify-center gap-2 text-center">
+                    <span>Lanjut ke {nextModule.title}</span>
+                    <ChevronRight className="h-5 w-5 shrink-0" />
+                  </Link>
+                </Button>
+              ) : (
+                <Button
+                  asChild
+                  className="flex-1 rounded-2xl h-auto min-h-[54px] py-3.5 px-5 font-black text-xs sm:text-base bg-gradient-to-r from-emerald-500 to-teal-600 hover:brightness-110 shadow-lg text-white flex items-center justify-center text-center gap-2 whitespace-normal break-words"
+                >
+                  <Link to="/pembekalan" className="w-full flex items-center justify-center gap-2 text-center">
+                    <CheckCircle2 className="h-5 w-5 shrink-0" />
+                    <span>Seluruh Modul Pembekalan Telah Tuntas!</span>
+                  </Link>
+                </Button>
+              )}
               <Button
-                asChild
-                className="w-full rounded-2xl h-auto min-h-[56px] py-3.5 px-5 font-black text-xs sm:text-base bg-gradient-to-r from-sky-500 via-indigo-600 to-purple-600 hover:brightness-110 shadow-lg text-white flex items-center justify-center text-center gap-2 whitespace-normal break-words"
+                type="button"
+                variant="outline"
+                onClick={handleRetakeQuiz}
+                className="rounded-2xl h-auto min-h-[54px] py-3.5 px-5 font-bold text-xs sm:text-sm border-indigo-200 text-indigo-700 hover:bg-indigo-50 flex items-center justify-center gap-2 shrink-0"
               >
-                <Link to="/pembekalan/$id" params={{ id: nextModule.id }} className="w-full flex items-center justify-center gap-2 text-center">
-                  <span>Lanjut ke {nextModule.title}</span>
-                  <ChevronRight className="h-5 w-5 shrink-0" />
-                </Link>
+                <RefreshCw className="h-4 w-4" />
+                <span>Kerjakan Ulang Quiz</span>
               </Button>
-            ) : (
-              <Button
-                asChild
-                className="w-full rounded-2xl h-auto min-h-[56px] py-3.5 px-5 font-black text-xs sm:text-base bg-gradient-to-r from-emerald-500 to-teal-600 hover:brightness-110 shadow-lg text-white flex items-center justify-center text-center gap-2 whitespace-normal break-words"
-              >
-                <Link to="/pembekalan" className="w-full flex items-center justify-center gap-2 text-center">
-                  <CheckCircle2 className="h-5 w-5 shrink-0" />
-                  <span>Seluruh Modul Pembekalan Telah Tuntas! Kembali ke Daftar</span>
-                </Link>
-              </Button>
-            )}
+            </div>
           </div>
         ) : (
           /* State 3: Video IS completed, Quiz IS NOT completed yet */

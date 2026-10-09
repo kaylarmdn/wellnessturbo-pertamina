@@ -730,7 +730,27 @@ export function getStoredPembekalanProgressList(): PembekalanProgress[] {
       localStorage.setItem(STORAGE_PEMBEKALAN_PROGRESS_KEY, JSON.stringify([]));
       return [];
     }
-    const parsed: PembekalanProgress[] = JSON.parse(raw);
+    let parsed: PembekalanProgress[] = JSON.parse(raw);
+
+    // Auto-fix migration: reset false auto-completion for pem-2 (or uncompleted modules)
+    // caused by earlier video completion bug
+    const fixKey = "wt_fix_pem2_autocleanup_v2";
+    if (!localStorage.getItem(fixKey)) {
+      parsed = parsed.map((p) => {
+        if (p && isMatchModuleId(p.module_id, "pem-2") && p.quiz_completed && p.quiz_score === 100) {
+          return {
+            ...p,
+            quiz_completed: false,
+            quiz_score: undefined,
+            completed_at: null,
+          };
+        }
+        return p;
+      });
+      localStorage.setItem(STORAGE_PEMBEKALAN_PROGRESS_KEY, JSON.stringify(parsed));
+      localStorage.setItem(fixKey, "true");
+    }
+
     return (parsed || []).filter((p) => p && p.user_id && p.module_id);
   } catch {
     return [];
@@ -772,7 +792,7 @@ export async function listPembekalanProgress(userId?: string): Promise<Pembekala
       video_progress_percentage: Math.max(existing.video_progress_percentage || 0, item.video_progress_percentage || 0),
       video_completed: existing.video_completed || item.video_completed,
       quiz_completed: existing.quiz_completed || item.quiz_completed,
-      quiz_score: Math.max(existing.quiz_score || 0, item.quiz_score || 0),
+      quiz_score: typeof item.quiz_score === "number" ? item.quiz_score : existing.quiz_score,
       completed_at: existing.completed_at || item.completed_at || null,
       updated_at: new Date(existing.updated_at || 0) > new Date(item.updated_at || 0) ? existing.updated_at : item.updated_at,
     };
@@ -780,12 +800,11 @@ export async function listPembekalanProgress(userId?: string): Promise<Pembekala
     map.set(key, merged);
   };
 
-  // 1. Load local stored progress
+  // 1. Load local stored progress (pure read, NEVER trigger writes/syncs here)
   const stored = getStoredPembekalanProgressList();
   const filteredStored = userId ? stored.filter((p) => p.user_id === userId) : stored;
   filteredStored.forEach((item) => {
     mergeProgress(item);
-    void syncPembekalanProgressToSupabase(item);
   });
 
   // 2. Fetch primary table: pembekalan_progress from Supabase
@@ -801,6 +820,7 @@ export async function listPembekalanProgress(userId?: string): Promise<Pembekala
   } catch { }
 
   // 3. Fetch backup table: video_progress from Supabase
+  // NOTE: Video completion only marks video_completed, NEVER auto-completes quiz!
   try {
     let vpQuery = supabase.from("video_progress").select("*");
     if (userId) {
@@ -820,9 +840,9 @@ export async function listPembekalanProgress(userId?: string): Promise<Pembekala
             module_id: normModId,
             video_progress_percentage: vp.progress_percentage || 0,
             video_completed: vp.completed || false,
-            quiz_completed: existing?.quiz_completed || vp.completed || (vp.progress_percentage && vp.progress_percentage >= 99) || false,
-            quiz_score: existing?.quiz_score || (vp.completed || (vp.progress_percentage && vp.progress_percentage >= 99) ? 100 : 0),
-            completed_at: vp.completed_at || existing?.completed_at || null,
+            quiz_completed: existing?.quiz_completed || false,
+            quiz_score: existing?.quiz_score,
+            completed_at: existing?.completed_at || null,
             updated_at: vp.updated_at || new Date().toISOString(),
           });
         }
@@ -831,6 +851,7 @@ export async function listPembekalanProgress(userId?: string): Promise<Pembekala
   } catch { }
 
   // 4. Fetch from Google Apps Script (Spreadsheet Tab LAPORAN PEMBEKALAN)
+  // ONLY count as quiz_completed if status is explicitly "Selesai" (not "Progres")
   try {
     const appsScriptUrl = "https://script.google.com/macros/s/AKfycbxvfwHwQmGXjgh0y_RizyMwjEQAlKm1OnjxcFfapTWPxDJhEHZKpTbJcI75p__4YAsKiA/exec?action=read&sheet=LAPORAN%20PEMBEKALAN";
     const sheetRes = await fetch(appsScriptUrl);
@@ -841,20 +862,30 @@ export async function listPembekalanProgress(userId?: string): Promise<Pembekala
           const rawNopek = row["No. Pekerja (Nopek)"] || row["No Pekerja"] || row["employee_number"];
           const rawName = row["Nama Pekerja"] || row["Nama"] || row["name"];
           const rawMod = row["Modul"] || row["module_title"] || "pem-1";
-          const rawScore = Number(row["Nilai Quiz"] || row["score"] || 100);
+          const rawScore = Number(row["Nilai Quiz"] || row["score"] || 0);
+          const rawStatus = String(row["Status"] || "").trim().toLowerCase();
           const rawTime = row["Waktu Selesai"] || new Date().toISOString();
-          const uId = String(rawNopek || rawName || "unknown").trim();
+          const uId = String(rawNopek || "").trim();
+          const uName = String(rawName || "").trim();
           const normModId = normalizeModuleId(String(rawMod));
 
-          if (uId && (!userId || uId.toLowerCase() === userId.trim().toLowerCase())) {
+          // Only merge as completed if status is explicitly "selesai"
+          const isDone = rawStatus === "selesai";
+          if (!isDone) return;
+
+          const matchesUser = !userId ||
+            (uId && uId.toLowerCase() === userId.trim().toLowerCase()) ||
+            (uName && uName.toLowerCase() === userId.trim().toLowerCase());
+
+          if (matchesUser) {
             mergeProgress({
-              id: `sheet-${uId}-${normModId}`,
-              user_id: uId,
+              id: `sheet-${uId || uName}-${normModId}`,
+              user_id: userId || uId || uName,
               module_id: normModId,
               video_progress_percentage: 100,
               video_completed: true,
               quiz_completed: true,
-              quiz_score: isNaN(rawScore) ? 100 : rawScore,
+              quiz_score: isNaN(rawScore) ? 0 : rawScore,
               completed_at: rawTime,
               updated_at: rawTime,
             });
@@ -893,7 +924,7 @@ export async function syncPembekalanProgressToSupabase(item: PembekalanProgress)
     video_completed: !!item.video_completed,
     quiz_completed: !!item.quiz_completed,
     quiz_score: typeof item.quiz_score === "number" ? item.quiz_score : (item.quiz_completed ? 100 : 0),
-    completed_at: item.completed_at || (item.quiz_completed || item.video_completed ? new Date().toISOString() : null),
+    completed_at: item.completed_at || (item.quiz_completed ? new Date().toISOString() : null),
     updated_at: item.updated_at || new Date().toISOString(),
   };
 
@@ -909,8 +940,8 @@ export async function syncPembekalanProgressToSupabase(item: PembekalanProgress)
       const updatePayload = {
         video_progress_percentage: Math.max(existing.video_progress_percentage || 0, payload.video_progress_percentage),
         video_completed: existing.video_completed || payload.video_completed,
-        quiz_completed: existing.quiz_completed || payload.quiz_completed,
-        quiz_score: Math.max(existing.quiz_score || 0, payload.quiz_score),
+        quiz_completed: payload.quiz_completed,
+        quiz_score: payload.quiz_completed ? payload.quiz_score : existing.quiz_score,
         completed_at: payload.completed_at || existing.completed_at || new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
@@ -937,65 +968,6 @@ export async function syncPembekalanProgressToSupabase(item: PembekalanProgress)
       completed: payload.video_completed,
     });
   } catch { }
-
-  // Auto POST to Google Apps Script Webhook (Spreadsheet)
-  try {
-    const defaultWebhookUrl = "https://script.google.com/macros/s/AKfycbxvfwHwQmGXjgh0y_RizyMwjEQAlKm1OnjxcFfapTWPxDJhEHZKpTbJcI75p__4YAsKiA/exec";
-    const webhookUrl = getStoredWebhookUrl() || defaultWebhookUrl;
-    if (webhookUrl && (payload.quiz_completed || payload.video_completed)) {
-      const storedUser = getStoredCurrentUser() as any;
-      const empNum = String(storedUser?.employee_number || uId);
-      const userName = String(storedUser?.name || empNum);
-      const modTitle = `Pembekalan ${normModId.replace(/\D/g, "") || "1"}`;
-      const scoreVal = typeof payload.quiz_score === "number" ? payload.quiz_score : 100;
-      const nowStr = new Date().toISOString();
-
-      // 1. Primary insert payload for Code.gs (action: "insert" & sheet: "LAPORAN PEMBEKALAN")
-      const insertPayload = {
-        action: "insert",
-        sheet: "LAPORAN PEMBEKALAN",
-        data: {
-          "Waktu Selesai": nowStr,
-          "Nama Pekerja": userName,
-          "No. Pekerja (Nopek)": empNum,
-          "Modul": modTitle,
-          "Nilai Quiz": scoreVal,
-          "Status": payload.quiz_completed ? "Selesai" : "Progres",
-        },
-      };
-
-      void fetch(webhookUrl, {
-        method: "POST",
-        mode: "no-cors",
-        headers: { "Content-Type": "text/plain" },
-        body: JSON.stringify(insertPayload),
-      });
-
-      // 2. Fallback GET/POST query parameter request
-      const queryParams = new URLSearchParams({
-        action: "insert",
-        sheet: "LAPORAN PEMBEKALAN",
-        employee_number: empNum,
-        name: userName,
-        module_title: modTitle,
-        score: String(scoreVal),
-      }).toString();
-
-      void fetch(`${webhookUrl}?${queryParams}`, {
-        method: "POST",
-        mode: "no-cors",
-      });
-
-      if (webhookUrl !== defaultWebhookUrl) {
-        void fetch(defaultWebhookUrl, {
-          method: "POST",
-          mode: "no-cors",
-          headers: { "Content-Type": "text/plain" },
-          body: JSON.stringify(insertPayload),
-        });
-      }
-    }
-  } catch { }
 }
 
 export async function savePembekalanVideoProgress(
@@ -1021,7 +993,7 @@ export async function savePembekalanVideoProgress(
     video_completed: isVideoDone,
     quiz_completed: existing?.quiz_completed || false,
     quiz_score: existing?.quiz_score,
-    completed_at: existing?.completed_at || (isVideoDone && existing?.quiz_completed ? now : null),
+    completed_at: existing?.completed_at || null,
     updated_at: now,
   };
 
@@ -1070,6 +1042,86 @@ export async function submitPembekalanQuiz(
   localStorage.setItem(STORAGE_PEMBEKALAN_PROGRESS_KEY, JSON.stringify(list));
 
   await syncPembekalanProgressToSupabase(item);
+
+  // Send single official completed record to Google Spreadsheet Webhook
+  try {
+    const defaultWebhookUrl = "https://script.google.com/macros/s/AKfycbxvfwHwQmGXjgh0y_RizyMwjEQAlKm1OnjxcFfapTWPxDJhEHZKpTbJcI75p__4YAsKiA/exec";
+    const webhookUrl = getStoredWebhookUrl() || defaultWebhookUrl;
+    if (webhookUrl) {
+      const storedUser = getStoredCurrentUser() as any;
+      const empNum = String(storedUser?.employee_number || userId);
+      const userName = String(storedUser?.name || empNum);
+      const modTitle = `Pembekalan ${normModId.replace(/\D/g, "") || "1"}`;
+
+      const insertPayload = {
+        action: "insert",
+        sheet: "LAPORAN PEMBEKALAN",
+        data: {
+          "Waktu Selesai": now,
+          "Nama Pekerja": userName,
+          "No. Pekerja (Nopek)": empNum,
+          "Modul": modTitle,
+          "Nilai Quiz": score,
+          "Status": "Selesai",
+        },
+      };
+
+      void fetch(webhookUrl, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "text/plain" },
+        body: JSON.stringify(insertPayload),
+      });
+    }
+  } catch (err) {
+    console.error("Gagal mengirim laporan quiz ke spreadsheet:", err);
+  }
+
+  return item;
+}
+
+export async function resetPembekalanQuiz(
+  userId: string,
+  moduleId: string
+): Promise<PembekalanProgress> {
+  const normModId = normalizeModuleId(moduleId);
+  const list = getStoredPembekalanProgressList();
+  const idx = list.findIndex((p) => p.user_id === userId && isMatchModuleId(p.module_id, normModId));
+  const now = new Date().toISOString();
+
+  let existing = idx !== -1 ? list[idx]! : null;
+  const item: PembekalanProgress = {
+    id: existing ? existing.id : `prog-${Date.now()}`,
+    user_id: userId,
+    module_id: normModId,
+    video_progress_percentage: 100,
+    video_completed: true,
+    quiz_completed: false,
+    quiz_score: undefined,
+    completed_at: null,
+    updated_at: now,
+  };
+
+  if (idx !== -1) {
+    list[idx] = item;
+  } else {
+    list.push(item);
+  }
+
+  localStorage.setItem(STORAGE_PEMBEKALAN_PROGRESS_KEY, JSON.stringify(list));
+
+  try {
+    await supabase
+      .from("pembekalan_progress")
+      .update({
+        quiz_completed: false,
+        quiz_score: 0,
+        completed_at: null,
+        updated_at: now,
+      } as never)
+      .eq("user_id", userId)
+      .eq("module_id", normModId);
+  } catch { }
 
   return item;
 }
