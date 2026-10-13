@@ -242,7 +242,7 @@ function LeaderboardPage() {
               : mode === "bfa"
                 ? "poin dari pengukuran komposisi tubuh di setiap bulannya"
                 : mode === "konsistensi"
-                  ? "Peringkat konsistensi aktivitas harian peserta berdasarkan sheet POIN DAILY."
+                  ? "Poin berdasarkan aktivitas harian peserta"
                   : "Peringkat persentase pencapaian akumulatif seluruh tim / group."}
           </p>
         </div>
@@ -470,7 +470,7 @@ function LeaderboardPage() {
         ) : mode === "bfa" ? (
           <span>Kategori <b>POIN BFA</b> merupakan poin dari pengukuran komposisi tubuh di setiap bulannya.</span>
         ) : mode === "konsistensi" ? (
-          <span>Leaderboard <b>POIN HARIAN</b> dihitung dari sheet <b>POIN DAILY</b> pada Google Spreadsheet berdasarkan Poin Daily peserta.</span>
+          <span>Leaderboard <b>POIN HARIAN</b> merupakan poin berdasarkan aktivitas harian peserta.</span>
         ) : (
           <span>Leaderboard <b>POIN GROUP</b> dihitung dari akumulasi pencapaian challenge per divisi / fungsi group.</span>
         )}
