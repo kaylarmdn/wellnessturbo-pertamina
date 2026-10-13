@@ -2167,23 +2167,14 @@ export async function fetchSpreadsheetLeaderboard(
         if (userMeta.function && userMeta.function !== "-") func = userMeta.function;
       }
 
-      // Extract points: Kolom Z is index 25 (fallback to pointsIdx or last numeric column)
-      let rawPoints = cols[25] ?? (pointsIdx !== -1 ? cols[pointsIdx] : cols[cols.length - 1]) ?? "0";
-      let points = cleanPointsValue(rawPoints);
+      // Extract points: Kolom Z (index 25) pada Google Sheet "POIN BFA" mulai dari baris 2 (index i=1)
+      let bfaPointsIdx = headers.findIndex(
+        (h) => h.includes("poin hasil") || h.includes("hasil bestwellness") || h.includes("bestwellness champ")
+      );
+      if (bfaPointsIdx === -1) bfaPointsIdx = 25; // Kolom Z adalah index 25 (A=0 ... Z=25)
 
-      // Fallback if index 25 was empty
-      if (points === 0) {
-        for (let c = cols.length - 1; c >= 0; c--) {
-          if (c === 0 || c === 1 || c === 2) continue;
-          const colH = headers[c] || "";
-          if (colH.includes("nomor") || colH.includes("nip") || colH.includes("nik") || colH.includes("pekerja")) continue;
-          const pts = cleanPointsValue(cols[c]);
-          if (pts > 0) {
-            points = pts;
-            break;
-          }
-        }
-      }
+      let rawPoints = cols[bfaPointsIdx] !== undefined && cols[bfaPointsIdx] !== "" ? cols[bfaPointsIdx] : (cols[25] ?? "0");
+      let points = cleanPointsValue(rawPoints);
 
       rows.push({
         user_id: nopek || `sheet-bfa-${i}`,
@@ -3441,7 +3432,7 @@ export function generateAutomatedNotifications(
 /* ----------------------------- worker challenge items ----------------------------- */
 
 const STORAGE_CHALLENGES_KEY = "wt_challenges_list_v2";
-const STORAGE_COMPLETIONS_KEY = "wt_challenge_completions_v2";
+const STORAGE_COMPLETIONS_KEY = "wt_challenge_completions_v3";
 
 const INITIAL_CHALLENGE_ITEMS: ChallengeItem[] = [
   // 1. Daily Report Exercise (DRE)
@@ -3642,11 +3633,43 @@ export function deleteChallengeItem(id: string): void {
   localStorage.setItem(STORAGE_CHALLENGES_KEY, JSON.stringify(current));
 }
 
+// Program Wellness Turbo resmi dimulai Senin, 5 Oktober 2026
+export const PROGRAM_START_DATE = new Date("2026-10-05T00:00:00+07:00");
+
+export function getCurrentProgramWeek(d = new Date()): {
+  weekNumber: number;
+  weekLabel: string;
+  startDateStr: string;
+  endDateStr: string;
+} {
+  const date = new Date(d);
+  const diffMs = date.getTime() - PROGRAM_START_DATE.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  const weekNumber = Math.max(1, Math.floor(diffDays / 7) + 1);
+
+  const startMonday = getStartOfCurrentWeek(date);
+  const endSunday = new Date(startMonday);
+  endSunday.setDate(startMonday.getDate() + 6);
+  endSunday.setHours(23, 59, 59, 999);
+
+  const months = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+  const startDateStr = `${startMonday.getDate()} ${months[startMonday.getMonth()]} ${startMonday.getFullYear()}`;
+  const endDateStr = `${endSunday.getDate()} ${months[endSunday.getMonth()]} ${endSunday.getFullYear()}`;
+
+  return {
+    weekNumber,
+    weekLabel: `Week ${weekNumber}`,
+    startDateStr,
+    endDateStr,
+  };
+}
+
 export function getStartOfCurrentWeek(d = new Date()): Date {
   const date = new Date(d);
   const day = date.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
   const diff = date.getDate() - day + (day === 0 ? -6 : 1);
-  const monday = new Date(date.setDate(diff));
+  const monday = new Date(date);
+  monday.setDate(diff);
   monday.setHours(0, 0, 0, 0);
   return monday;
 }
@@ -3657,17 +3680,31 @@ export function getStoredChallengeCompletions(): ChallengeCompletion[] {
     if (!raw) return [];
     const list: ChallengeCompletion[] = JSON.parse(raw);
     const startOfWeek = getStartOfCurrentWeek();
+    const currentWeekInfo = getCurrentProgramWeek();
+    let hasChanges = false;
 
-    return list.map((item) => {
+    const updatedList = list.map((item) => {
       const itemDate = item.updated_at ? new Date(item.updated_at) : new Date(0);
-      if (itemDate < startOfWeek) {
+      const isPastWeek =
+        itemDate < startOfWeek ||
+        (item.week_number !== undefined && item.week_number !== currentWeekInfo.weekNumber);
+
+      if (isPastWeek && item.completed_count !== 0) {
+        hasChanges = true;
         return {
           ...item,
           completed_count: 0,
+          week_number: currentWeekInfo.weekNumber,
+          updated_at: new Date().toISOString(),
         };
       }
       return item;
     });
+
+    if (hasChanges) {
+      localStorage.setItem(STORAGE_COMPLETIONS_KEY, JSON.stringify(updatedList));
+    }
+    return updatedList;
   } catch {
     return [];
   }
@@ -3679,12 +3716,15 @@ export function toggleWorkerChallengeCheck(
 ): ChallengeCompletion {
   const rawList = getStoredChallengeCompletions();
   const startOfWeek = getStartOfCurrentWeek();
+  const currentWeek = getCurrentProgramWeek().weekNumber;
   const idx = rawList.findIndex((c) => c.user_id === user.id && c.challenge_id === challenge.id);
 
   if (idx !== -1 && rawList[idx]) {
     const existing = rawList[idx]!;
     const itemDate = existing.updated_at ? new Date(existing.updated_at) : new Date(0);
-    const isPreviousWeek = itemDate < startOfWeek;
+    const isPreviousWeek =
+      itemDate < startOfWeek ||
+      (existing.week_number !== undefined && existing.week_number !== currentWeek);
 
     const baseCount = isPreviousWeek ? 0 : existing.completed_count;
     const nextCount = baseCount >= challenge.target_count ? 0 : baseCount + 1;
@@ -3694,6 +3734,7 @@ export function toggleWorkerChallengeCheck(
       completed_count: nextCount,
       completed_at: nextCount > 0 ? new Date().toISOString() : existing.completed_at,
       updated_at: new Date().toISOString(),
+      week_number: currentWeek,
     };
     rawList[idx] = updated;
     localStorage.setItem(STORAGE_COMPLETIONS_KEY, JSON.stringify(rawList));
@@ -3710,11 +3751,47 @@ export function toggleWorkerChallengeCheck(
     completed_count: 1,
     completed_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
+    week_number: currentWeek,
   };
 
   rawList.unshift(newComp);
   localStorage.setItem(STORAGE_COMPLETIONS_KEY, JSON.stringify(rawList));
   return newComp;
+}
+
+export function resetWorkerChallengeCheck(userId: string, challengeId: string): ChallengeCompletion | null {
+  const rawList = getStoredChallengeCompletions();
+  const currentWeek = getCurrentProgramWeek().weekNumber;
+  const idx = rawList.findIndex((c) => c.user_id === userId && c.challenge_id === challengeId);
+  if (idx !== -1 && rawList[idx]) {
+    const updated: ChallengeCompletion = {
+      ...rawList[idx]!,
+      completed_count: 0,
+      updated_at: new Date().toISOString(),
+      week_number: currentWeek,
+    };
+    rawList[idx] = updated;
+    localStorage.setItem(STORAGE_COMPLETIONS_KEY, JSON.stringify(rawList));
+    return updated;
+  }
+  return null;
+}
+
+export function resetAllWorkerChallengesForWeek(userId: string): void {
+  const rawList = getStoredChallengeCompletions();
+  const currentWeek = getCurrentProgramWeek().weekNumber;
+  const updated = rawList.map((c) => {
+    if (c.user_id === userId) {
+      return {
+        ...c,
+        completed_count: 0,
+        updated_at: new Date().toISOString(),
+        week_number: currentWeek,
+      };
+    }
+    return c;
+  });
+  localStorage.setItem(STORAGE_COMPLETIONS_KEY, JSON.stringify(updated));
 }
 
 /* ----------------------------- worker feedbacks ----------------------------- */

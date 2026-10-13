@@ -29,7 +29,7 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/admin/leaderboard")({
   ssr: false,
   head: () => ({
-    meta: [{ title: "Leaderboard Poin Individu & Integrasi Spreadsheet — Medical Admin" }],
+    meta: [{ title: "Leaderboard Best Wellness Champ & Integrasi Spreadsheet — Medical Admin" }],
   }),
   component: AdminLeaderboardPage,
 });
@@ -131,10 +131,10 @@ function AdminLeaderboardPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-primary-deep flex items-center gap-2">
-            <Trophy className="h-6 w-6 text-amber-500" /> Leaderboard Poin Individu Pekerja
+            <Trophy className="h-6 w-6 text-amber-500" /> Leaderboard Best Wellness Champ Pekerja
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Kelola & pantau peringkat poin individu peserta dengan filter Jenis Kelamin dan Group.
+            Kelola & pantau peringkat Best Wellness Champ peserta (terdiri dari poin daily, challenge, BFA, dan pembekalan).
           </p>
         </div>
 

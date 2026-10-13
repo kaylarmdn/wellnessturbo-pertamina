@@ -202,6 +202,7 @@ export type ChallengeCompletion = {
   completed_count: number;
   completed_at: string;
   updated_at: string;
+  week_number?: number;
 };
 
 export type FeedbackCategory = "saran" | "apresiasi" | "lainnya";

@@ -26,7 +26,7 @@ export const Route = createFileRoute("/leaderboard")({
   validateSearch: (search: Record<string, unknown>): { mode?: LeaderboardMode; tab?: string } => {
     const rawMode = (search["mode"] as LeaderboardMode) || (search["tab"] === "daily" ? "konsistensi" : undefined);
     return {
-      mode: rawMode || "individu",
+      mode: rawMode || "konsistensi",
     };
   },
   ssr: false,
@@ -48,13 +48,13 @@ export const Route = createFileRoute("/leaderboard")({
   ),
 });
 
-type LeaderboardMode = "individu" | "group" | "konsistensi" | "bfa";
+type LeaderboardMode = "konsistensi" | "group" | "individu" | "bfa";
 
 function LeaderboardPage() {
   const search = Route.useSearch();
   const { user } = useCurrentUser();
   const [sheetUrl, setSheetUrl] = useState<string | null>(null);
-  const [mode, setMode] = useState<LeaderboardMode>(search.mode || "individu");
+  const [mode, setMode] = useState<LeaderboardMode>(search.mode || "konsistensi");
 
   useEffect(() => {
     setSheetUrl(getStoredSheetUrl());
@@ -135,42 +135,15 @@ function LeaderboardPage() {
             Leaderboard Turbo Race
           </h1>
           <p className="mt-1 text-sm sm:text-base text-slate-600 font-medium">
-            Peringkat pencapaian poin aktivitas wellness (Individu, Group, dan Best Konsistensi Champion).
+            Peringkat pencapaian poin aktivitas wellness (Poin Harian, Poin Group, Best Wellness Champ, dan Poin BFA).
           </p>
         </div>
       </div>
 
-      {/* Mode Sub-Tabs (Poin Individu, Poin Group, Best Konsistensi Champion, Leaderboard BFA) */}
+      {/* Mode Sub-Tabs (POIN HARIAN, POIN GROUP, BEST WELLNESS CHAMP, POIN BFA) */}
       <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 rounded-3xl border border-purple-100 bg-white/95 p-2 shadow-lg backdrop-blur-xl w-full xl:w-auto">
-          <button
-            type="button"
-            onClick={() => setMode("individu")}
-            className={cn(
-              "flex items-center justify-center gap-2 rounded-2xl px-4 py-2.5 sm:py-3 text-center text-xs sm:text-sm font-bold transition-all duration-300",
-              mode === "individu"
-                ? "bg-gradient-to-r from-sky-500 to-indigo-600 text-white shadow-md shadow-sky-500/25 scale-[1.02]"
-                : "text-slate-600 hover:text-slate-900 hover:bg-slate-50",
-            )}
-          >
-            <User className="h-4 w-4 shrink-0" />
-            <span className="truncate">Poin Individu</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setMode("group")}
-            className={cn(
-              "flex items-center justify-center gap-2 rounded-2xl px-4 py-2.5 sm:py-3 text-center text-xs sm:text-sm font-bold transition-all duration-300",
-              mode === "group"
-                ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md shadow-purple-500/25 scale-[1.02]"
-                : "text-slate-600 hover:text-slate-900 hover:bg-slate-50",
-            )}
-          >
-            <Users className="h-4 w-4 shrink-0" />
-            <span className="truncate">Poin Group</span>
-          </button>
-
+          {/* 1. POIN HARIAN (sebelumnya BEST KONSISTENSI, ditukar posisi ke pertama) */}
           <button
             type="button"
             onClick={() => setMode("konsistensi")}
@@ -182,9 +155,40 @@ function LeaderboardPage() {
             )}
           >
             <Award className="h-4 w-4 shrink-0" />
-            <span className="truncate">Best Konsistensi</span>
+            <span className="truncate">POIN HARIAN</span>
           </button>
 
+          {/* 2. POIN GROUP */}
+          <button
+            type="button"
+            onClick={() => setMode("group")}
+            className={cn(
+              "flex items-center justify-center gap-2 rounded-2xl px-4 py-2.5 sm:py-3 text-center text-xs sm:text-sm font-bold transition-all duration-300",
+              mode === "group"
+                ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md shadow-purple-500/25 scale-[1.02]"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-50",
+            )}
+          >
+            <Users className="h-4 w-4 shrink-0" />
+            <span className="truncate">POIN GROUP</span>
+          </button>
+
+          {/* 3. BEST WELLNESS CHAMP (sebelumnya POIN INDIVIDU, ditukar posisi ke ketiga) */}
+          <button
+            type="button"
+            onClick={() => setMode("individu")}
+            className={cn(
+              "flex items-center justify-center gap-2 rounded-2xl px-4 py-2.5 sm:py-3 text-center text-xs sm:text-sm font-bold transition-all duration-300",
+              mode === "individu"
+                ? "bg-gradient-to-r from-sky-500 to-indigo-600 text-white shadow-md shadow-sky-500/25 scale-[1.02]"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-50",
+            )}
+          >
+            <User className="h-4 w-4 shrink-0" />
+            <span className="truncate">BEST WELLNESS CHAMP</span>
+          </button>
+
+          {/* 4. POIN BFA */}
           <button
             type="button"
             onClick={() => setMode("bfa")}
@@ -196,7 +200,7 @@ function LeaderboardPage() {
             )}
           >
             <Trophy className="h-4 w-4 shrink-0 text-amber-300" />
-            <span className="truncate">Leaderboard BFA</span>
+            <span className="truncate">POIN BFA</span>
           </button>
         </div>
 
@@ -220,15 +224,31 @@ function LeaderboardPage() {
       </div>
 
       {/* Periode Challenge Info Box */}
-      <div className="rounded-2xl border border-sky-200/80 bg-sky-50/80 p-4 backdrop-blur-md flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+      <div className="rounded-2xl border border-sky-200/80 bg-sky-50/80 p-4 backdrop-blur-md flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <p className="text-xs font-bold uppercase tracking-wider text-sky-800">
-            Kategori: {mode === "group" ? "Poin Group / Tim" : mode === "konsistensi" ? "Best Konsistensi Champion (Poin Daily)" : mode === "bfa" ? "Leaderboard BFA (Body Fat Analysis)" : "Poin Individu"}
+            Kategori:{" "}
+            {mode === "konsistensi"
+              ? "POIN HARIAN"
+              : mode === "group"
+                ? "POIN GROUP"
+                : mode === "individu"
+                  ? "BEST WELLNESS CHAMP"
+                  : "POIN BFA"}
+          </p>
+          <p className="text-xs text-slate-700 mt-1 font-semibold leading-relaxed">
+            {mode === "individu"
+              ? "terdiri dari poin daily, poin challange, poin BFA, dan poin pembekalan."
+              : mode === "bfa"
+                ? "poin dari pengukuran komposisi tubuh di setiap bulannya"
+                : mode === "konsistensi"
+                  ? "Peringkat konsistensi aktivitas harian peserta berdasarkan sheet POIN DAILY."
+                  : "Peringkat persentase pencapaian akumulatif seluruh tim / group."}
           </p>
         </div>
         {((mode === "group" || mode === "konsistensi" || mode === "bfa") && !hasSheetData) && (
-          <Badge variant="outline" className="text-[11px] font-semibold border-purple-300 text-purple-700 bg-purple-50 shrink-0">
-            📊 Data Dummy {mode === "group" ? "Group" : mode === "bfa" ? "BFA" : "Konsistensi"} (Akan Diupdate)
+          <Badge variant="outline" className="text-[11px] font-semibold border-purple-300 text-purple-700 bg-purple-50 shrink-0 self-start sm:self-center">
+            📊 Data Dummy {mode === "group" ? "Group" : mode === "bfa" ? "BFA" : "Poin Harian"} (Akan Diupdate)
           </Badge>
         )}
       </div>
@@ -315,7 +335,13 @@ function LeaderboardPage() {
                 <th className="px-5 py-3.5 text-center">POIN BULAN 1, 2, 3</th>
               )}
               <th className="px-5 py-3.5 text-right">
-                {mode === "konsistensi" ? "TOTAL POIN" : `POIN ${mode === "group" ? "GROUP" : "INDIVIDU"}`}
+                {mode === "konsistensi"
+                  ? "TOTAL POIN"
+                  : mode === "group"
+                    ? "POIN GROUP"
+                    : mode === "bfa"
+                      ? "POIN BFA"
+                      : "POIN BEST WELLNESS CHAMP"}
               </th>
             </tr>
           </thead>
@@ -420,7 +446,16 @@ function LeaderboardPage() {
             {board.length === 0 && (
               <tr>
                 <td colSpan={mode === "konsistensi" ? 4 : 3} className="px-5 py-10 text-center text-slate-500 font-medium">
-                  Belum ada data peringkat pada kategori <b>{mode === "konsistensi" ? "Best Konsistensi Champion" : `Turbo Race (${mode === "group" ? "Group" : "Individu"})`}</b>.
+                  Belum ada data peringkat pada kategori{" "}
+                  <b>
+                    {mode === "konsistensi"
+                      ? "Poin Harian"
+                      : mode === "individu"
+                        ? "Best Wellness Champ"
+                        : mode === "bfa"
+                          ? "Poin BFA"
+                          : "Poin Group"}
+                  </b>.
                 </td>
               </tr>
             )}
@@ -430,7 +465,15 @@ function LeaderboardPage() {
 
       <p className="flex items-start gap-2 text-xs text-slate-500 font-medium">
         <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-sky-600" />
-        Leaderboard Best Konsistensi Champion dihitung dari sheet <b>POIN DAILY</b> pada Google Spreadsheet berdasarkan Poin Daily peserta.
+        {mode === "individu" ? (
+          <span>Kategori <b>BEST WELLNESS CHAMP</b> terdiri dari poin daily, poin challange, poin BFA, dan poin pembekalan.</span>
+        ) : mode === "bfa" ? (
+          <span>Kategori <b>POIN BFA</b> merupakan poin dari pengukuran komposisi tubuh di setiap bulannya.</span>
+        ) : mode === "konsistensi" ? (
+          <span>Leaderboard <b>POIN HARIAN</b> dihitung dari sheet <b>POIN DAILY</b> pada Google Spreadsheet berdasarkan Poin Daily peserta.</span>
+        ) : (
+          <span>Leaderboard <b>POIN GROUP</b> dihitung dari akumulasi pencapaian challenge per divisi / fungsi group.</span>
+        )}
       </p>
     </div>
   );

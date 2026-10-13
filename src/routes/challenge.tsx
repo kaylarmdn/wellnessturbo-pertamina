@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   Activity,
+  Calendar,
   CheckCircle2,
   Circle,
   Clock,
@@ -10,20 +11,24 @@ import {
   Flame,
   Info,
   Layers,
+  RotateCcw,
   Sparkles,
   Target,
   Utensils,
   Zap,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { RequireUser } from "@/components/RequireUser";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import {
+  getCurrentProgramWeek,
   getStoredChallengeCompletions,
   getStoredChallengeItems,
+  resetAllWorkerChallengesForWeek,
+  resetWorkerChallengeCheck,
   toggleWorkerChallengeCheck,
 } from "@/lib/api";
 import type { ChallengeCategory, ChallengeItem } from "@/lib/types";
@@ -51,6 +56,16 @@ function WorkerChallengePage() {
   const { user } = useCurrentUser();
   const [activeTab, setActiveTab] = useState<ChallengeCategory | "all">("all");
   const [refreshKey, setRefreshKey] = useState(0);
+
+  const weekInfo = getCurrentProgramWeek();
+
+  useEffect(() => {
+    // Bersihkan storage legacy agar tidak bentrok dengan versi v3
+    try {
+      localStorage.removeItem("wt_challenge_completions_v2");
+      localStorage.removeItem("wt_challenge_completions");
+    } catch {}
+  }, []);
 
   const challengesQuery = useQuery({
     queryKey: ["worker-challenge-items", refreshKey],
@@ -90,6 +105,23 @@ function WorkerChallengePage() {
     } else {
       toast.info(`Status ceklis "${item.title}" di-reset.`);
     }
+  };
+
+  const handleResetAllForWeek = () => {
+    if (!user) {
+      toast.error("Silakan login terlebih dahulu.");
+      return;
+    }
+    resetAllWorkerChallengesForWeek(user.id);
+    setRefreshKey((prev) => prev + 1);
+    toast.success(`Ceklis semua challenge ${weekInfo.weekLabel} telah di-reset ke 0.`);
+  };
+
+  const handleResetItem = (item: ChallengeItem) => {
+    if (!user) return;
+    resetWorkerChallengeCheck(user.id, item.id);
+    setRefreshKey((prev) => prev + 1);
+    toast.info(`Ceklis "${item.title}" di-reset ke 0.`);
   };
 
   const filteredList = challengeList.filter((item) => {
@@ -154,6 +186,38 @@ function WorkerChallengePage() {
         </div>
       </div>
 
+      {/* Timeline & Weekly Auto-Reset Banner */}
+      <div className="rounded-3xl border border-sky-200/90 bg-gradient-to-r from-sky-50 via-indigo-50/50 to-white p-5 shadow-sm backdrop-blur-md flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-start sm:items-center gap-3.5">
+          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-sky-500 text-white shadow-md shadow-sky-500/25">
+            <Calendar className="h-5 w-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-black text-slate-900 text-sm sm:text-base">
+                Timeline Challenge: {weekInfo.weekLabel}
+              </span>
+              <Badge className="bg-sky-600 text-white text-[11px] font-bold border-none">
+                {weekInfo.startDateStr} – {weekInfo.endDateStr}
+              </Badge>
+            </div>
+            <p className="mt-1 text-xs text-slate-600 font-medium">
+              Sistem saat ini berada di <b>{weekInfo.weekLabel}</b>. Ceklis otomatis ter-reset di setiap awal minggu (Senin pukul 00:00).
+            </p>
+          </div>
+        </div>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleResetAllForWeek}
+          className="rounded-2xl border-slate-300 text-slate-700 hover:bg-slate-100 font-bold text-xs shrink-0 self-end md:self-auto shadow-xs"
+        >
+          <RotateCcw className="h-3.5 w-3.5 mr-1.5 text-slate-500" />
+          Reset Ceklis Minggu Ini
+        </Button>
+      </div>
+
       {/* Info Notice Box */}
       <div className="rounded-2xl border border-amber-200/80 bg-amber-50/80 p-4 backdrop-blur-md flex items-start gap-3">
         <Info className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
@@ -215,9 +279,21 @@ function WorkerChallengePage() {
               <div className="mt-5 pt-4 border-t border-slate-100 space-y-3">
                 <div className="flex items-center justify-between text-xs font-bold">
                   <span className="text-slate-600">Progres Minggu Ini:</span>
-                  <span className={cn("font-extrabold", isDone ? "text-emerald-700" : "text-indigo-600")}>
-                    {currentCount} / {item.target_count} Ceklis
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className={cn("font-extrabold", isDone ? "text-emerald-700" : "text-indigo-600")}>
+                      {currentCount} / {item.target_count} Ceklis
+                    </span>
+                    {currentCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => handleResetItem(item)}
+                        title="Reset ceklis challenge ini ke 0"
+                        className="text-[11px] text-slate-400 hover:text-rose-600 font-semibold underline decoration-slate-300"
+                      >
+                        Reset
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {/* Custom Visual Progress Bar */}
