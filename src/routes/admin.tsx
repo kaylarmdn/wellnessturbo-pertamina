@@ -119,7 +119,7 @@ function AdminLayout() {
 
         <div className="relative z-10 min-w-0 min-h-screen w-full max-w-full overflow-x-hidden lg:pl-64 flex flex-col">
           {/* Frozen / Fixed Top Admin Header */}
-          <header className="fixed top-0 left-0 right-0 z-50 lg:left-64 flex items-center justify-between border-b border-white/80 bg-white/95 backdrop-blur-2xl px-4 py-3 sm:px-6 shadow-sm">
+          <header className="fixed top-0 left-0 right-0 z-50 lg:left-64 flex h-16 items-center justify-between border-b border-white/80 bg-white/95 backdrop-blur-2xl px-4 py-3 sm:px-6 shadow-sm">
             <div className="flex items-center gap-3 min-w-0">
               <Sheet open={open} onOpenChange={setOpen}>
                 <SheetTrigger asChild>
@@ -174,7 +174,7 @@ function AdminLayout() {
             </div>
           </header>
 
-          <main className="flex-1 min-w-0 w-full max-w-full overflow-x-hidden p-4 sm:p-6 lg:p-8 pt-20 sm:pt-20">
+          <main className="flex-1 min-w-0 w-full max-w-full overflow-x-hidden px-4 sm:px-6 lg:px-8 pt-24 sm:pt-24 lg:pt-28 pb-12">
             <Outlet />
           </main>
         </div>
