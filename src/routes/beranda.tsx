@@ -310,17 +310,26 @@ function Beranda() {
           <div className="animate-orbit-spin absolute -bottom-20 -right-20 h-64 w-64 rounded-full border border-indigo-200/40 opacity-50 pointer-events-none" />
           
           <div className="relative z-10 grid gap-6 xl:grid-cols-12 xl:items-center w-full min-w-0">
-            <div className="xl:col-span-5 relative overflow-hidden rounded-2xl border border-white/80 shadow-md min-w-0">
+            <Link
+              to="/event"
+              className="xl:col-span-5 relative overflow-hidden rounded-2xl border border-white/80 shadow-md min-w-0 group cursor-pointer block"
+              title="Klik untuk membuka Event & Poster Lengkap"
+            >
               <img
                 src={event.banner_url || "/images/cosmic_wellness_hero.jpg"}
                 alt={event.title}
                 loading="lazy"
-                className="h-48 sm:h-56 w-full object-cover transition-transform duration-700 hover:scale-105"
+                className="h-48 sm:h-56 w-full object-cover transition-transform duration-700 group-hover:scale-105"
               />
               <Badge className="absolute top-3 left-3 bg-rose-500 text-white font-bold border-none shadow-md text-xs">
                 <CalendarHeart className="h-3.5 w-3.5 mr-1" /> Campaign Medical
               </Badge>
-            </div>
+              <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <span className="rounded-full bg-white/95 px-3.5 py-1.5 text-xs font-bold text-slate-900 shadow-lg backdrop-blur-md">
+                  🔍 Buka Full Poster
+                </span>
+              </div>
+            </Link>
 
             <div className="xl:col-span-7 space-y-3 min-w-0">
               <div className="flex flex-wrap items-center gap-2">
