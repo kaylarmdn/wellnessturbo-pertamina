@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PaginationControl, usePagination } from "@/components/ui/pagination-control";
 import {
   Select,
   SelectContent,
@@ -39,6 +40,15 @@ function AdminEventPage() {
   const [editingEvent, setEditingEvent] = useState<Partial<MedicalEvent> | null>(null);
   const [bannerFile, setBannerFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+
+  const {
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    paginatedItems: paginatedEvents,
+    totalItems,
+    pageSize,
+  } = usePagination(events.data ?? [], 6);
 
   const saveMutation = useMutation({
     mutationFn: async (payload: Partial<MedicalEvent>) => {
@@ -115,20 +125,26 @@ function AdminEventPage() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {(events.data ?? []).map((evt) => {
+        {paginatedEvents.map((evt) => {
           const active = isEventActive(evt);
           return (
             <div
               key={evt.id}
               className="flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition hover:shadow-md"
             >
-              <div className="relative aspect-[21/9] bg-muted">
+              <div className="relative aspect-[21/9] bg-slate-950 overflow-hidden flex items-center justify-center">
                 {evt.banner_url ? (
-                  <img
-                    src={evt.banner_url}
-                    alt={evt.title}
-                    className="h-full w-full object-cover"
-                  />
+                  <>
+                    <div
+                      className="absolute inset-0 bg-cover bg-center filter blur-xl scale-110 opacity-40"
+                      style={{ backgroundImage: `url(${evt.banner_url})` }}
+                    />
+                    <img
+                      src={evt.banner_url}
+                      alt={evt.title}
+                      className="relative z-10 h-full w-full object-contain"
+                    />
+                  </>
                 ) : (
                   <div className="grid h-full place-items-center bg-primary-soft text-primary">
                     <ImageIcon className="h-8 w-8" />
@@ -183,6 +199,14 @@ function AdminEventPage() {
           );
         })}
       </div>
+
+      <PaginationControl
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={setCurrentPage}
+        totalItems={totalItems}
+        pageSize={pageSize}
+      />
 
       {/* Modal Add / Edit Event */}
       <Dialog open={openModal} onOpenChange={setOpenModal}>

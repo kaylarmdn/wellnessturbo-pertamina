@@ -21,6 +21,7 @@ import { AppShell } from "@/components/AppShell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { PaginationControl, usePagination } from "@/components/ui/pagination-control";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import {
   claimReward,
@@ -49,6 +50,7 @@ function WorkerRewardPage() {
     queryKey: ["spreadsheet-leaderboard-daily", sheetUrl],
     queryFn: () => (sheetUrl ? fetchSpreadsheetLeaderboard(sheetUrl, "POIN DAILY") : Promise.resolve([])),
     enabled: !!sheetUrl,
+    staleTime: 1000 * 60 * 3,
   });
 
   // Find user row from sheet "POIN DAILY"
@@ -142,6 +144,24 @@ function WorkerRewardPage() {
     if (selectedCategory === "all") return true;
     return item.category === selectedCategory;
   });
+
+  const {
+    currentPage: rewardPage,
+    setCurrentPage: setRewardPage,
+    totalPages: totalRewardPages,
+    paginatedItems: paginatedRewards,
+    totalItems: totalRewardItems,
+    pageSize: rewardPageSize,
+  } = usePagination(filteredRewards, 6);
+
+  const {
+    currentPage: claimPage,
+    setCurrentPage: setClaimPage,
+    totalPages: totalClaimPages,
+    paginatedItems: paginatedClaims,
+    totalItems: totalClaimItems,
+    pageSize: claimPageSize,
+  } = usePagination(myClaims, 5);
 
   const getCategoryBadge = (category: RewardCategory) => {
     switch (category) {
@@ -363,7 +383,7 @@ function WorkerRewardPage() {
 
         {/* Reward Cards Grid */}
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredRewards.map((reward) => {
+          {paginatedRewards.map((reward) => {
             const userClaim = getClaimForReward(reward.id);
             const isDiproses = userClaim?.status === "diproses";
             const isSudahDiklaim = userClaim?.status === "sudah_diklaim";
@@ -486,6 +506,14 @@ function WorkerRewardPage() {
           })}
         </div>
 
+        <PaginationControl
+          currentPage={rewardPage}
+          totalPages={totalRewardPages}
+          onPageChange={setRewardPage}
+          totalItems={totalRewardItems}
+          pageSize={rewardPageSize}
+        />
+
         {/* My Claims History Section */}
         {myClaims.length > 0 && (
           <div className="space-y-4 pt-6">
@@ -496,7 +524,7 @@ function WorkerRewardPage() {
 
             <div className="overflow-hidden rounded-3xl border border-purple-100 bg-white/95 shadow-md">
               <div className="divide-y divide-slate-100">
-                {myClaims.map((claim) => (
+                {paginatedClaims.map((claim) => (
                   <div key={claim.id} className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50/60 transition-colors">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
@@ -524,6 +552,14 @@ function WorkerRewardPage() {
                 ))}
               </div>
             </div>
+
+            <PaginationControl
+              currentPage={claimPage}
+              totalPages={totalClaimPages}
+              onPageChange={setClaimPage}
+              totalItems={totalClaimItems}
+              pageSize={claimPageSize}
+            />
           </div>
         )}
       </div>

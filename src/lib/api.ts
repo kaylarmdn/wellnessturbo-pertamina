@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { dedupPromise, fetchWithCache, getRememberedTab, setRememberedTab, invalidateCache } from "./cache";
 import { getStoredCurrentUser, getStoredSheetUrl, getStoredWebhookUrl, setStoredCurrentUser } from "./session";
 import type {
   AppNotification,
@@ -23,6 +24,8 @@ import type {
   VideoProgress,
   WorkerFeedback,
 } from "./types";
+
+export { invalidateCache };
 
 /* ---------------------------------- users --------------------------------- */
 
@@ -70,12 +73,17 @@ export async function ensureUserExists(
   }
 }
 
+const userProfileResolved = new Set<string>();
 
 export async function getUser(id: string): Promise<AppUser | null> {
   const stored = getStoredCurrentUser();
   if (stored && (stored["id"] === id || stored["employee_number"] === id || stored["username"] === id)) {
     const profile = stored as unknown as AppUser;
-    if (profile.name === profile.id || profile.name === profile.employee_number || /^\d+$/.test(profile.name.trim())) {
+    if (
+      !userProfileResolved.has(id) &&
+      (profile.name === profile.id || profile.name === profile.employee_number || /^\d+$/.test(profile.name.trim()))
+    ) {
+      userProfileResolved.add(id);
       const sheetUrl = getStoredSheetUrl();
       if (sheetUrl) {
         try {
@@ -1500,18 +1508,43 @@ export function parseGenderValue(val: string | undefined): string | undefined {
 
 export async function fetchCsvWithTabCandidates(
   sheetUrl: string,
-  candidates: string[]
+  candidates: string[],
+  forceRefresh = false
 ): Promise<{ text: string; tabName: string } | null> {
-  for (const tabName of candidates) {
+  if (!sheetUrl || !candidates || candidates.length === 0) return null;
+
+  const candidateKey = candidates[0] || "default";
+  const remembered = getRememberedTab(sheetUrl, candidateKey);
+
+  // If a candidate was previously verified to work for this sheet, test it first
+  const sortedCandidates =
+    remembered && candidates.includes(remembered)
+      ? [remembered, ...candidates.filter((c) => c !== remembered)]
+      : candidates;
+
+  for (const tabName of sortedCandidates) {
     const csvUrl = formatGoogleSheetCsvUrl(sheetUrl, tabName);
     if (!csvUrl) continue;
     try {
-      const res = await fetch(csvUrl);
-      if (res.ok) {
-        const text = await res.text();
-        if (text && text.trim().length > 0 && !text.toLowerCase().includes("<!doctype html>")) {
-          return { text, tabName };
-        }
+      const cacheKey = `csv_${csvUrl}`;
+      const text = await fetchWithCache(
+        cacheKey,
+        async () => {
+          const res = await fetch(csvUrl);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const t = await res.text();
+          if (!t || t.trim().length === 0 || t.toLowerCase().includes("<!doctype html>")) {
+            throw new Error("Invalid CSV content");
+          }
+          return t;
+        },
+        180000,
+        forceRefresh
+      );
+
+      if (text && text.trim().length > 0 && !text.toLowerCase().includes("<!doctype html>")) {
+        setRememberedTab(sheetUrl, candidateKey, tabName);
+        return { text, tabName };
       }
     } catch {
       // ignore and try next candidate
@@ -1526,18 +1559,22 @@ export type SpreadsheetUserRow = {
   name?: string;
 };
 
-export async function fetchSpreadsheetUsers(sheetUrl: string): Promise<SpreadsheetUserRow[]> {
+export async function fetchSpreadsheetUsers(sheetUrl: string, forceRefresh = false): Promise<SpreadsheetUserRow[]> {
   if (!sheetUrl) return [];
-  const csvUrl = formatGoogleSheetCsvUrl(sheetUrl, "USER");
-  if (!csvUrl) return [];
+  const cacheKey = `spreadsheet_users_${sheetUrl}`;
+  return fetchWithCache(
+    cacheKey,
+    async () => {
+      try {
+        const csvUrl = formatGoogleSheetCsvUrl(sheetUrl, "USER");
+        if (!csvUrl) return [];
 
-  try {
-    const res = await fetch(csvUrl);
-    if (!res.ok) return [];
+        const res = await fetch(csvUrl);
+        if (!res.ok) return [];
 
-    const text = await res.text();
-    const parsedRows = parseCsv(text);
-    if (parsedRows.length === 0) return [];
+      const text = await res.text();
+      const parsedRows = parseCsv(text);
+      if (parsedRows.length === 0) return [];
 
     let startIdx = 0;
     let usernameColIdx = 0;
@@ -1577,11 +1614,15 @@ export async function fetchSpreadsheetUsers(sheetUrl: string): Promise<Spreadshe
       }
     }
 
-    return users;
-  } catch (err) {
-    console.error("Gagal mengambil data sheet USER:", err);
-    return [];
-  }
+      return users;
+    } catch (err) {
+      console.error("Gagal mengambil data sheet USER:", err);
+      return [];
+    }
+  },
+  180000,
+  forceRefresh
+);
 }
 
 export async function authenticateSpreadsheetUser(
@@ -1662,7 +1703,7 @@ export interface UserMetadata {
 
 const userMetaCache = new Map<string, { byName: Map<string, UserMetadata>; byUsername: Map<string, UserMetadata>; timestamp: number }>();
 
-export async function fetchUserMetadataMap(sheetUrl: string): Promise<{
+export async function fetchUserMetadataMap(sheetUrl: string, forceRefresh = false): Promise<{
   byName: Map<string, UserMetadata>;
   byUsername: Map<string, UserMetadata>;
 }> {
@@ -1673,141 +1714,142 @@ export async function fetchUserMetadataMap(sheetUrl: string): Promise<{
   if (!sheetUrl) return { byName, byUsername };
 
   const cached = userMetaCache.get(sheetUrl);
-  if (cached && Date.now() - cached.timestamp < 10000) {
+  if (!forceRefresh && cached && Date.now() - cached.timestamp < 300000) {
     return { byName: cached.byName, byUsername: cached.byUsername };
   }
 
-  const processRowsForMetadata = (parsedRows: string[][], defaultGenderForTab?: string) => {
-    if (!parsedRows || parsedRows.length <= 1) return;
+  return dedupPromise(`user_meta_map_${sheetUrl}`, async () => {
+    const processRowsForMetadata = (parsedRows: string[][], defaultGenderForTab?: string) => {
+      if (!parsedRows || parsedRows.length <= 1) return;
 
-    let headerRowIdx = 0;
-    for (let r = 0; r < Math.min(5, parsedRows.length); r++) {
-      const rowStr = parsedRows[r]?.join(" ").toLowerCase() || "";
-      if (
-        rowStr.includes("nama") ||
-        rowStr.includes("lokasi") ||
-        rowStr.includes("fungsi") ||
-        rowStr.includes("username") ||
-        rowStr.includes("pekerja") ||
-        rowStr.includes("kelamin")
-      ) {
-        headerRowIdx = r;
-        break;
-      }
-    }
-
-    const headerRow = parsedRows[headerRowIdx] || parsedRows[0] || [];
-    const headers = headerRow.map((h) => h.toLowerCase().trim());
-
-    let usernameIdx = headers.findIndex(
-      (h) =>
-        h.includes("username") ||
-        h.includes("nip") ||
-        h.includes("nik") ||
-        h.includes("nomor pekerja") ||
-        h.includes("no pekerja") ||
-        h.includes("no. pekerja") ||
-        h.includes("nopek")
-    );
-    let nameIdx = headers.findIndex(
-      (h) => (h.includes("nama") || h === "name" || h.includes("nama pekerja")) && !h.includes("nomor") && !h.includes("no")
-    );
-    let locIdx = headers.findIndex(
-      (h) => h.includes("lokasi") || h.includes("location") || h.includes("unit") || h.includes("plant") || h.includes("site")
-    );
-    let funcIdx = headers.findIndex(
-      (h) => h.includes("fungsi") || h.includes("function") || h.includes("jabatan") || h.includes("dept") || h.includes("department")
-    );
-    let genderIdx = headers.findIndex(
-      (h) => h.includes("jenis kelamin") || h.includes("kelamin") || h.includes("gender") || h.includes("jk") || h.includes("l/p")
-    );
-
-    if (nameIdx === -1) {
-      nameIdx = headers.findIndex((h) => h.includes("pekerja") && !h.includes("nomor") && !h.includes("no"));
-    }
-    if (nameIdx === -1) nameIdx = 1;
-    if (usernameIdx === -1) usernameIdx = 0;
-
-    for (let i = headerRowIdx + 1; i < parsedRows.length; i++) {
-      const cols = parsedRows[i];
-      if (!cols || cols.length === 0) continue;
-
-      const rawName = cols[nameIdx] ?? cols[1] ?? cols[0] ?? "";
-      if (!isValidParticipantName(rawName)) continue;
-      const name = rawName.trim();
-      const username = (usernameIdx !== -1 ? cols[usernameIdx] : cols[0])?.trim() || "";
-      const location = (locIdx !== -1 && cols[locIdx]?.trim()) ? cols[locIdx].trim() : "";
-      const func = (funcIdx !== -1 && cols[funcIdx]?.trim()) ? cols[funcIdx].trim() : "";
-
-      let explicitGender: string | undefined = undefined;
-      if (genderIdx !== -1 && cols[genderIdx]) {
-        explicitGender = parseGenderValue(cols[genderIdx]);
-      }
-      // Specifically check Column C (index 2) for "L" or "P"
-      if (!explicitGender && cols.length >= 3 && cols[2]) {
-        explicitGender = parseGenderValue(cols[2]);
-      }
-      // Scan row cells for exact "L" or "P"
-      if (!explicitGender) {
-        for (let c = 0; c < cols.length; c++) {
-          if (c === nameIdx || c === locIdx || c === funcIdx || c === usernameIdx) continue;
-          const parsedG = parseGenderValue(cols[c]);
-          if (parsedG) {
-            explicitGender = parsedG;
-            break;
-          }
+      let headerRowIdx = 0;
+      for (let r = 0; r < Math.min(5, parsedRows.length); r++) {
+        const rowStr = parsedRows[r]?.join(" ").toLowerCase() || "";
+        if (
+          rowStr.includes("nama") ||
+          rowStr.includes("lokasi") ||
+          rowStr.includes("fungsi") ||
+          rowStr.includes("username") ||
+          rowStr.includes("pekerja") ||
+          rowStr.includes("kelamin")
+        ) {
+          headerRowIdx = r;
+          break;
         }
       }
 
-      const cName = cleanKey(name);
-      const eName = name.toLowerCase();
+      const headerRow = parsedRows[headerRowIdx] || parsedRows[0] || [];
+      const headers = headerRow.map((h) => h.toLowerCase().trim());
 
-      const existing = byName.get(cName) || byName.get(eName) || (username ? (byUsername.get(username.toLowerCase()) || byUsername.get(cleanKey(username))) : undefined);
+      let usernameIdx = headers.findIndex(
+        (h) =>
+          h.includes("username") ||
+          h.includes("nip") ||
+          h.includes("nik") ||
+          h.includes("nomor pekerja") ||
+          h.includes("no pekerja") ||
+          h.includes("no. pekerja") ||
+          h.includes("nopek")
+      );
+      let nameIdx = headers.findIndex(
+        (h) => (h.includes("nama") || h === "name" || h.includes("nama pekerja")) && !h.includes("nomor") && !h.includes("no")
+      );
+      let locIdx = headers.findIndex(
+        (h) => h.includes("lokasi") || h.includes("location") || h.includes("unit") || h.includes("plant") || h.includes("site")
+      );
+      let funcIdx = headers.findIndex(
+        (h) => h.includes("fungsi") || h.includes("function") || h.includes("jabatan") || h.includes("dept") || h.includes("department")
+      );
+      let genderIdx = headers.findIndex(
+        (h) => h.includes("jenis kelamin") || h.includes("kelamin") || h.includes("gender") || h.includes("jk") || h.includes("l/p")
+      );
 
-      const finalGender = explicitGender || existing?.gender || defaultGenderForTab;
-
-      const meta: UserMetadata = {
-        name,
-        username: username || existing?.username || "",
-        location: (location && location !== "-") ? location : (existing?.location || "-"),
-        function: (func && func !== "-") ? func : (existing?.function || "-"),
-        gender: finalGender,
-      };
-
-      byName.set(cName, meta);
-      byName.set(eName, meta);
-      if (username) {
-        byUsername.set(username.toLowerCase(), meta);
-        byUsername.set(cleanKey(username), meta);
+      if (nameIdx === -1) {
+        nameIdx = headers.findIndex((h) => h.includes("pekerja") && !h.includes("nomor") && !h.includes("no"));
       }
+      if (nameIdx === -1) nameIdx = 1;
+      if (usernameIdx === -1) usernameIdx = 0;
+
+      for (let i = headerRowIdx + 1; i < parsedRows.length; i++) {
+        const cols = parsedRows[i];
+        if (!cols || cols.length === 0) continue;
+
+        const rawName = cols[nameIdx] ?? cols[1] ?? cols[0] ?? "";
+        if (!isValidParticipantName(rawName)) continue;
+        const name = rawName.trim();
+        const username = (usernameIdx !== -1 ? cols[usernameIdx] : cols[0])?.trim() || "";
+        const location = (locIdx !== -1 && cols[locIdx]?.trim()) ? cols[locIdx].trim() : "";
+        const func = (funcIdx !== -1 && cols[funcIdx]?.trim()) ? cols[funcIdx].trim() : "";
+
+        let explicitGender: string | undefined = undefined;
+        if (genderIdx !== -1 && cols[genderIdx]) {
+          explicitGender = parseGenderValue(cols[genderIdx]);
+        }
+        if (!explicitGender && cols.length >= 3 && cols[2]) {
+          explicitGender = parseGenderValue(cols[2]);
+        }
+        if (!explicitGender) {
+          for (let c = 0; c < cols.length; c++) {
+            if (c === nameIdx || c === locIdx || c === funcIdx || c === usernameIdx) continue;
+            const parsedG = parseGenderValue(cols[c]);
+            if (parsedG) {
+              explicitGender = parsedG;
+              break;
+            }
+          }
+        }
+
+        const cName = cleanKey(name);
+        const eName = name.toLowerCase();
+
+        const existing = byName.get(cName) || byName.get(eName) || (username ? (byUsername.get(username.toLowerCase()) || byUsername.get(cleanKey(username))) : undefined);
+
+        const finalGender = explicitGender || existing?.gender || defaultGenderForTab;
+
+        const meta: UserMetadata = {
+          name,
+          username: username || existing?.username || "",
+          location: (location && location !== "-") ? location : (existing?.location || "-"),
+          function: (func && func !== "-") ? func : (existing?.function || "-"),
+          gender: finalGender,
+        };
+
+        byName.set(cName, meta);
+        byName.set(eName, meta);
+        if (username) {
+          byUsername.set(username.toLowerCase(), meta);
+          byUsername.set(cleanKey(username), meta);
+        }
+      }
+    };
+
+    try {
+      // 1. Check USER tab
+      const userRes = await fetchCsvWithTabCandidates(sheetUrl, ["USER"], forceRefresh);
+      if (userRes) {
+        processRowsForMetadata(parseCsv(userRes.text));
+      }
+
+      // 2 & 3. Fetch NOVER and UNDER in parallel
+      const [noverRes, underRes] = await Promise.all([
+        fetchCsvWithTabCandidates(sheetUrl, TAB_CANDIDATES.NOVER, forceRefresh).catch(() => null),
+        fetchCsvWithTabCandidates(sheetUrl, TAB_CANDIDATES.UNDER, forceRefresh).catch(() => null),
+      ]);
+
+      if (noverRes) {
+        processRowsForMetadata(parseCsv(noverRes.text), "Laki-laki");
+      }
+      if (underRes) {
+        processRowsForMetadata(parseCsv(underRes.text), "Perempuan");
+      }
+
+      userMetaCache.set(sheetUrl, { byName, byUsername, timestamp: Date.now() });
+    } catch (err) {
+      console.warn("fetchUserMetadataMap error:", err);
     }
-  };
 
-  try {
-    // 1. Check USER tab
-    const userRes = await fetchCsvWithTabCandidates(sheetUrl, ["USER"]);
-    if (userRes) {
-      processRowsForMetadata(parseCsv(userRes.text));
-    }
-
-    // 2. Check JENIS KELAMIN-TUBO NOVER tab candidates
-    const noverRes = await fetchCsvWithTabCandidates(sheetUrl, TAB_CANDIDATES.NOVER);
-    if (noverRes) {
-      processRowsForMetadata(parseCsv(noverRes.text), "Laki-laki");
-    }
-
-    // 3. Check JENIS KELAMIN-TURBO UNDER tab candidates
-    const underRes = await fetchCsvWithTabCandidates(sheetUrl, TAB_CANDIDATES.UNDER);
-    if (underRes) {
-      processRowsForMetadata(parseCsv(underRes.text), "Perempuan");
-    }
-
-    userMetaCache.set(sheetUrl, { byName, byUsername, timestamp: Date.now() });
-  } catch (err) {
-    console.warn("fetchUserMetadataMap error:", err);
-  }
-
-  return { byName, byUsername };
+    return { byName, byUsername };
+  });
 }
 
 export function isValidParticipantName(str: string | undefined): boolean {
@@ -2001,11 +2043,16 @@ export async function fetchGroupLeaderboardFromSheets(sheetUrl: string): Promise
 export async function fetchSpreadsheetLeaderboard(
   sheetUrl: string,
   category?: string,
+  forceRefresh = false
 ): Promise<LeaderboardRow[]> {
-  let sheetName: string | undefined = undefined;
-  const catLower = category ? category.toLowerCase() : "";
+  const cacheKey = `board_${sheetUrl}_${category || "ALL"}`;
+  return fetchWithCache(
+    cacheKey,
+    async () => {
+      let sheetName: string | undefined = undefined;
+      const catLower = category ? category.toLowerCase() : "";
 
-  let fetchedRes: { text: string; tabName: string } | null = null;
+      let fetchedRes: { text: string; tabName: string } | null = null;
 
   if (category) {
     if (catLower.includes("group") || catLower.includes("tim")) {
@@ -2424,7 +2471,11 @@ export async function fetchSpreadsheetLeaderboard(
     });
   }
 
-  return sortLeaderboardRows(rows);
+    return sortLeaderboardRows(rows);
+  },
+  180000,
+  forceRefresh
+);
 }
 
 export function getDummyAdminLeaderboard(): LeaderboardRow[] {
@@ -2600,10 +2651,14 @@ export function getDummyAdminLeaderboard(): LeaderboardRow[] {
   ];
 }
 
-export async function fetchAdminLeaderboardAll(sheetUrl: string): Promise<LeaderboardRow[]> {
-  const pointsMap = new Map<string, number>();
-  const turboList: Array<{ name: string; nopek?: string; clean: string; cleanNopek?: string; points: number }> = [];
-  const cleanName = (str: string) => str.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+export async function fetchAdminLeaderboardAll(sheetUrl: string, forceRefresh = false): Promise<LeaderboardRow[]> {
+  const cacheKey = `admin_leaderboard_all_${sheetUrl}`;
+  return fetchWithCache(
+    cacheKey,
+    async () => {
+      const pointsMap = new Map<string, number>();
+      const turboList: Array<{ name: string; nopek?: string; clean: string; cleanNopek?: string; points: number }> = [];
+      const cleanName = (str: string) => str.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
 
   // Helper for points lookup with NOPEK & Name matching (defaults to 0 if not found in TURBO RACE)
   const lookupPoints = (targetName: string, targetNopek?: string): number => {
@@ -2748,98 +2803,97 @@ export async function fetchAdminLeaderboardAll(sheetUrl: string): Promise<Leader
     }
   };
 
-  // 2. Fetch JENIS KELAMIN TURBO-NOVER sheet tab & match points from TURBO RACE by name and nopek
-  try {
-    const nover = await fetchSpreadsheetLeaderboard(sheetUrl, "JENIS KELAMIN TURBO-NOVER");
-    if (nover && nover.length > 0) {
-      nover.forEach((r) => {
-        if (!isValidParticipantName(r.name)) return;
-        recordGender(r.name, r.gender);
-        const cKey = cleanName(r.name);
-        const validRPoints = (r.points && r.points < 10000) ? r.points : 0;
-        const pts = lookupPoints(r.name, r.nopek || r.employee_number || r.user_id) || validRPoints;
-        const row: LeaderboardRow = {
-          ...r,
-          points: pts,
-          category: "NOVER188",
-        };
-        results.push(row);
-        seenUserKeys.set(cKey, row);
-      });
-    }
-  } catch (e) {
-    console.warn("JENIS KELAMIN TURBO-NOVER tab error:", e);
+  // 2, 3, 4. Fetch NOVER, UNDER, and BFA sheet tabs in parallel
+  const [nover, under, bfa] = await Promise.all([
+    fetchSpreadsheetLeaderboard(sheetUrl, "JENIS KELAMIN TURBO-NOVER", forceRefresh).catch((e) => {
+      console.warn("JENIS KELAMIN TURBO-NOVER tab error:", e);
+      return [] as LeaderboardRow[];
+    }),
+    fetchSpreadsheetLeaderboard(sheetUrl, "JENIS KELAMIN TURBO-UNDER", forceRefresh).catch((e) => {
+      console.warn("UNDER12 tab error:", e);
+      return [] as LeaderboardRow[];
+    }),
+    fetchSpreadsheetLeaderboard(sheetUrl, "POIN BFA", forceRefresh).catch((e) => {
+      console.warn("POIN BFA tab error:", e);
+      return [] as LeaderboardRow[];
+    }),
+  ]);
+
+  // Process NOVER
+  if (nover && nover.length > 0) {
+    nover.forEach((r) => {
+      if (!isValidParticipantName(r.name)) return;
+      recordGender(r.name, r.gender);
+      const cKey = cleanName(r.name);
+      const validRPoints = (r.points && r.points < 10000) ? r.points : 0;
+      const pts = lookupPoints(r.name, r.nopek || r.employee_number || r.user_id) || validRPoints;
+      const row: LeaderboardRow = {
+        ...r,
+        points: pts,
+        category: "NOVER188",
+      };
+      results.push(row);
+      seenUserKeys.set(cKey, row);
+    });
   }
 
   const underNameSet = new Set<string>();
 
-  // 3. Fetch JENIS KELAMIN TURBO-UNDER sheet tab & match points from TURBO RACE by name
-  try {
-    const under = await fetchSpreadsheetLeaderboard(sheetUrl, "JENIS KELAMIN TURBO-UNDER");
-    if (under && under.length > 0) {
-      under.forEach((r) => {
-        if (!isValidParticipantName(r.name)) return;
-        recordGender(r.name, r.gender);
-        const cKey = cleanName(r.name);
-        underNameSet.add(r.name.trim().toLowerCase());
-        underNameSet.add(cKey);
-        const validRPoints = (r.points && r.points < 10000) ? r.points : 0;
-        const pts = lookupPoints(r.name, r.nopek || r.employee_number || r.user_id) || validRPoints;
+  // Process UNDER
+  if (under && under.length > 0) {
+    under.forEach((r) => {
+      if (!isValidParticipantName(r.name)) return;
+      recordGender(r.name, r.gender);
+      const cKey = cleanName(r.name);
+      underNameSet.add(r.name.trim().toLowerCase());
+      underNameSet.add(cKey);
+      const validRPoints = (r.points && r.points < 10000) ? r.points : 0;
+      const pts = lookupPoints(r.name, r.nopek || r.employee_number || r.user_id) || validRPoints;
 
-        if (seenUserKeys.has(cKey)) {
-          const existing = seenUserKeys.get(cKey)!;
-          existing.category = "UNDER12";
-          if (pts > existing.points) existing.points = pts;
-        } else {
-          const row: LeaderboardRow = {
-            ...r,
-            points: pts,
-            category: "UNDER12",
-            gender: r.gender && r.gender !== "-" ? r.gender : (genderMap.get(r.name.trim().toLowerCase()) || genderMap.get(cKey) || "-"),
-          };
-          results.push(row);
-          seenUserKeys.set(cKey, row);
-        }
-      });
-    }
-  } catch (e) {
-    console.warn("UNDER12 tab error:", e);
+      if (seenUserKeys.has(cKey)) {
+        const existing = seenUserKeys.get(cKey)!;
+        existing.category = "UNDER12";
+        if (pts > existing.points) existing.points = pts;
+      } else {
+        const row: LeaderboardRow = {
+          ...r,
+          points: pts,
+          category: "UNDER12",
+          gender: r.gender && r.gender !== "-" ? r.gender : (genderMap.get(r.name.trim().toLowerCase()) || genderMap.get(cKey) || "-"),
+        };
+        results.push(row);
+        seenUserKeys.set(cKey, row);
+      }
+    });
   }
 
-  // 4. Fetch POIN BFA sheet tab (Do NOT duplicate participants!)
-  try {
-    const bfa = await fetchSpreadsheetLeaderboard(sheetUrl, "POIN BFA");
-    if (bfa && bfa.length > 0) {
-      bfa.forEach((r) => {
-        if (!isValidParticipantName(r.name)) return;
-        recordGender(r.name, r.gender);
-        const cKey = cleanName(r.name);
-        const isUnder = underNameSet.has(r.name.trim().toLowerCase()) || underNameSet.has(cKey);
-        const validBfaPts = (r.points && r.points < 10000) ? r.points : 0;
+  // Process BFA
+  if (bfa && bfa.length > 0) {
+    bfa.forEach((r) => {
+      if (!isValidParticipantName(r.name)) return;
+      recordGender(r.name, r.gender);
+      const cKey = cleanName(r.name);
+      const isUnder = underNameSet.has(r.name.trim().toLowerCase()) || underNameSet.has(cKey);
+      const validBfaPts = (r.points && r.points < 10000) ? r.points : 0;
 
-        if (seenUserKeys.has(cKey)) {
-          // Participant already exists from NOVER/UNDER tab - update points if existing had 0
-          const existing = seenUserKeys.get(cKey)!;
-          if (existing.points === 0 && validBfaPts > 0) {
-            existing.points = validBfaPts;
-          }
-        } else {
-          // Only add new row if participant was NOT in NOVER or UNDER tab
-          const row: LeaderboardRow = {
-            ...r,
-            points: validBfaPts || lookupPoints(r.name, r.nopek || r.employee_number || r.user_id),
-            category: isUnder ? "UNDER12" : "NOVER188",
-          };
-          results.push(row);
-          seenUserKeys.set(cKey, row);
+      if (seenUserKeys.has(cKey)) {
+        const existing = seenUserKeys.get(cKey)!;
+        if (existing.points === 0 && validBfaPts > 0) {
+          existing.points = validBfaPts;
         }
-      });
-    }
-  } catch (e) {
-    console.warn("POIN BFA tab error:", e);
+      } else {
+        const row: LeaderboardRow = {
+          ...r,
+          points: validBfaPts || lookupPoints(r.name, r.nopek || r.employee_number || r.user_id),
+          category: isUnder ? "UNDER12" : "NOVER188",
+        };
+        results.push(row);
+        seenUserKeys.set(cKey, row);
+      }
+    });
   }
 
-  const userMetaMap = await fetchUserMetadataMap(sheetUrl);
+  const userMetaMap = await fetchUserMetadataMap(sheetUrl, forceRefresh);
 
   // Ensure all results have location, function, and gender resolved from sheet USER
   results.forEach((r) => {
@@ -2858,7 +2912,7 @@ export async function fetchAdminLeaderboardAll(sheetUrl: string): Promise<Leader
   // Fallback if results return empty
   if (results.length === 0) {
     try {
-      const defaultRows = await fetchSpreadsheetLeaderboard(sheetUrl, "TURBO RACE");
+      const defaultRows = await fetchSpreadsheetLeaderboard(sheetUrl, "TURBO RACE", forceRefresh);
       if (defaultRows && defaultRows.length > 0) return defaultRows;
     } catch (e) {
       console.warn("TURBO RACE fallback error:", e);
@@ -2868,6 +2922,10 @@ export async function fetchAdminLeaderboardAll(sheetUrl: string): Promise<Leader
   return results.length > 0
     ? sortLeaderboardRows(results)
     : sortLeaderboardRows(getDummyAdminLeaderboard());
+    },
+    180000,
+    forceRefresh
+  );
 }
 
 export function getDummyBfaLeaderboard(): LeaderboardRow[] {

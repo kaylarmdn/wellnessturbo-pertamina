@@ -29,6 +29,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { PaginationControl, usePagination } from "@/components/ui/pagination-control";
 import {
   Select,
   SelectContent,
@@ -122,7 +123,7 @@ function AdminReportsPage() {
   const pembekalanProgressQuery = useQuery({
     queryKey: ["pembekalan-progress-reports"],
     queryFn: () => listPembekalanProgress(""),
-    refetchInterval: 5000,
+    staleTime: 1000 * 60 * 3,
   });
 
   const usersList = usersQuery.data ?? [];
@@ -350,6 +351,15 @@ function AdminReportsPage() {
       );
     });
   }, [completed3Participants, search]);
+
+  const {
+    currentPage: completedPage,
+    setCurrentPage: setCompletedPage,
+    totalPages: totalCompletedPages,
+    paginatedItems: paginatedCompleted3List,
+    totalItems: totalCompletedItems,
+    pageSize: completedPageSize,
+  } = usePagination(filteredCompleted3List, 15);
 
   const filteredProgressList = useMemo(() => {
     return enrichedProgressList.filter((item) => {
@@ -621,67 +631,82 @@ function AdminReportsPage() {
                   </p>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[750px] text-xs">
-                    <thead className="bg-slate-100/90 text-slate-700 font-extrabold uppercase tracking-wider text-[11px]">
-                      <tr>
-                        <th className="px-5 py-4 text-left">Nama Pekerja</th>
-                        <th className="px-4 py-4 text-left">No. Pekerja / NopeK</th>
-                        <th className="px-4 py-4 text-left">Lokasi & Fungsi</th>
-                        <th className="px-4 py-4 text-center">Status Pembekalan</th>
-                        <th className="px-4 py-4 text-center">Rincian Skor Kuis</th>
-                        <th className="px-4 py-4 text-center">Rata-Rata Skor Quiz</th>
-                        <th className="px-5 py-4 text-right">Tanggal Selesai</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                      {filteredCompleted3List.map((item, idx) => (
-                        <tr key={item.user_id} className="hover:bg-emerald-50/30 transition-colors">
-                          <td className="px-5 py-4 font-bold text-slate-900 flex items-center gap-3">
-                            <div className="grid h-8 w-8 place-items-center rounded-2xl bg-emerald-600 text-white font-black text-xs shrink-0 shadow-xs">
-                              {idx + 1}
-                            </div>
-                            <div>
-                              <span className="font-black text-slate-900 text-sm block">{item.user_name}</span>
-                              <span className="text-[11px] text-slate-500 font-normal">Pekerja Pertamina</span>
-                            </div>
-                          </td>
-                          <td className="px-4 py-4 font-mono font-bold text-slate-700">{item.employee_number}</td>
-                          <td className="px-4 py-4">
-                            <div className="space-y-0.5">
-                              <span className="font-bold text-slate-800 block">{item.user_location}</span>
-                              <span className="text-[11px] text-slate-500 block">{item.user_function}</span>
-                            </div>
-                          </td>
-                          <td className="px-4 py-4 text-center">
-                            {item.is_full_completed ? (
-                              <Badge className="bg-emerald-500/15 text-emerald-800 border border-emerald-300 font-bold text-xs px-3 py-1">
-                                ✅ Tuntas 3 Modul (100%)
-                              </Badge>
-                            ) : (
-                              <Badge className="bg-amber-500/15 text-amber-800 border border-amber-300 font-bold text-xs px-3 py-1">
-                                ⏳ {item.completed_modules_count} dari 3 Modul Tuntas
-                              </Badge>
-                            )}
-                          </td>
-                          <td className="px-4 py-4 text-center">
-                            <span className="text-slate-600 font-mono text-[11px] bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200 inline-block font-semibold">
-                              {item.module_scores_text}
-                            </span>
-                          </td>
-                          <td className="px-4 py-4 text-center font-black">
-                            <span className="text-emerald-800 bg-emerald-100/80 border border-emerald-300 px-3 py-1.5 rounded-xl text-sm inline-block shadow-2xs">
-                              🏆 {item.average_score} / 100
-                            </span>
-                          </td>
-                          <td className="px-5 py-4 text-right font-mono text-slate-500 text-[11px]">
-                            {formatDate(item.completed_at)}
-                          </td>
+                <>
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[750px] text-xs">
+                      <thead className="bg-slate-100/90 text-slate-700 font-extrabold uppercase tracking-wider text-[11px]">
+                        <tr>
+                          <th className="px-5 py-4 text-left">Nama Pekerja</th>
+                          <th className="px-4 py-4 text-left">No. Pekerja / NopeK</th>
+                          <th className="px-4 py-4 text-left">Lokasi & Fungsi</th>
+                          <th className="px-4 py-4 text-center">Status Pembekalan</th>
+                          <th className="px-4 py-4 text-center">Rincian Skor Kuis</th>
+                          <th className="px-4 py-4 text-center">Rata-Rata Skor Quiz</th>
+                          <th className="px-5 py-4 text-right">Tanggal Selesai</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                        {paginatedCompleted3List.map((item, idx) => {
+                          const itemIndex = (completedPage - 1) * completedPageSize + idx + 1;
+                          return (
+                            <tr key={item.user_id} className="hover:bg-emerald-50/30 transition-colors">
+                              <td className="px-5 py-4 font-bold text-slate-900 flex items-center gap-3">
+                                <div className="grid h-8 w-8 place-items-center rounded-2xl bg-emerald-600 text-white font-black text-xs shrink-0 shadow-xs">
+                                  {itemIndex}
+                                </div>
+                                <div>
+                                  <span className="font-black text-slate-900 text-sm block">{item.user_name}</span>
+                                  <span className="text-[11px] text-slate-500 font-normal">Pekerja Pertamina</span>
+                                </div>
+                              </td>
+                              <td className="px-4 py-4 font-mono font-bold text-slate-700">{item.employee_number}</td>
+                              <td className="px-4 py-4">
+                                <div className="space-y-0.5">
+                                  <span className="font-bold text-slate-800 block">{item.user_location}</span>
+                                  <span className="text-[11px] text-slate-500 block">{item.user_function}</span>
+                                </div>
+                              </td>
+                              <td className="px-4 py-4 text-center">
+                                {item.is_full_completed ? (
+                                  <Badge className="bg-emerald-500/15 text-emerald-800 border border-emerald-300 font-bold text-xs px-3 py-1">
+                                    ✅ Tuntas 3 Modul (100%)
+                                  </Badge>
+                                ) : (
+                                  <Badge className="bg-amber-500/15 text-amber-800 border border-amber-300 font-bold text-xs px-3 py-1">
+                                    ⏳ {item.completed_modules_count} dari 3 Modul Tuntas
+                                  </Badge>
+                                )}
+                              </td>
+                              <td className="px-4 py-4 text-center">
+                                <span className="text-slate-600 font-mono text-[11px] bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200 inline-block font-semibold">
+                                  {item.module_scores_text}
+                                </span>
+                              </td>
+                              <td className="px-4 py-4 text-center font-black">
+                                <span className="text-emerald-800 bg-emerald-100/80 border border-emerald-300 px-3 py-1.5 rounded-xl text-sm inline-block shadow-2xs">
+                                  🏆 {item.average_score} / 100
+                                </span>
+                              </td>
+                              <td className="px-5 py-4 text-right font-mono text-slate-500 text-[11px]">
+                                {formatDate(item.completed_at)}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="p-4 border-t border-slate-100">
+                    <PaginationControl
+                      currentPage={completedPage}
+                      totalPages={totalCompletedPages}
+                      onPageChange={setCompletedPage}
+                      totalItems={totalCompletedItems}
+                      pageSize={completedPageSize}
+                    />
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>

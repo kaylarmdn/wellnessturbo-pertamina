@@ -11,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { PaginationControl, usePagination } from "@/components/ui/pagination-control";
 import { branding } from "@/config/branding";
 import { listActiveEvents } from "@/lib/api";
 import { formatDateRange } from "@/lib/format";
@@ -40,6 +41,15 @@ function EventPage() {
   const events = useQuery({ queryKey: ["events-active"], queryFn: listActiveEvents });
   const [selectedPoster, setSelectedPoster] = useState<MedicalEvent | null>(null);
 
+  const {
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    paginatedItems: paginatedEvents,
+    totalItems,
+    pageSize,
+  } = usePagination(events.data ?? [], 6);
+
   return (
     <div className="space-y-6 animate-fade-in pb-12">
       <div className="glass-panel rounded-3xl p-6 sm:p-8 border border-white/80 bg-white/95 shadow-xl backdrop-blur-2xl">
@@ -59,7 +69,7 @@ function EventPage() {
       )}
 
       <div className="grid gap-6 md:grid-cols-2">
-        {(events.data ?? []).map((event) => (
+        {paginatedEvents.map((event) => (
           <article
             key={event.id}
             className="group overflow-hidden rounded-3xl border border-purple-100 bg-white/95 shadow-md transition-all duration-300 hover:border-indigo-300 hover:shadow-xl flex flex-col justify-between"
@@ -77,25 +87,32 @@ function EventPage() {
                     }
                   }}
                   title="Klik untuk melihat poster penuh"
-                  className="relative cursor-pointer overflow-hidden bg-slate-950 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="relative cursor-pointer overflow-hidden bg-slate-950 focus:outline-none focus:ring-2 focus:ring-indigo-500 flex items-center justify-center"
                   style={{ aspectRatio: branding.bannerAspectRatio }}
                 >
+                  {/* Ambient Blurred Background to fill banner aspect ratio without awkward bars */}
+                  <div
+                    className="absolute inset-0 bg-cover bg-center filter blur-xl scale-110 opacity-50"
+                    style={{ backgroundImage: `url(${event.banner_url})` }}
+                  />
+
+                  {/* Main Uncropped Poster */}
                   <img
                     src={event.banner_url}
                     alt={event.title}
                     loading="lazy"
-                    className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    className="relative z-10 h-full w-full object-contain transition-transform duration-700 group-hover:scale-105"
                   />
 
                   {/* Gradient Overlay & Hover Pill */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-black/30 opacity-0 transition-opacity duration-300 group-hover:opacity-100 flex items-center justify-center">
+                  <div className="absolute inset-0 z-20 bg-gradient-to-t from-slate-950/80 via-transparent to-black/30 opacity-0 transition-opacity duration-300 group-hover:opacity-100 flex items-center justify-center">
                     <span className="flex items-center gap-2 rounded-full bg-white/95 px-4 py-2 text-xs font-bold text-slate-900 shadow-2xl backdrop-blur-md transition-transform duration-300 group-hover:scale-105">
                       <Maximize2 className="h-4 w-4 text-indigo-600" /> Lihat Full Poster
                     </span>
                   </div>
 
                   {/* Top Floating Badge */}
-                  <div className="absolute top-3 right-3 rounded-full bg-slate-900/80 px-2.5 py-1 text-[11px] font-bold text-white shadow-md backdrop-blur-md flex items-center gap-1.5 border border-white/20">
+                  <div className="absolute top-3 right-3 z-20 rounded-full bg-slate-900/80 px-2.5 py-1 text-[11px] font-bold text-white shadow-md backdrop-blur-md flex items-center gap-1.5 border border-white/20">
                     <Eye className="h-3 w-3 text-sky-400" />
                     <span>Klik Full Poster</span>
                   </div>
@@ -146,11 +163,19 @@ function EventPage() {
         ))}
       </div>
 
+      <PaginationControl
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={setCurrentPage}
+        totalItems={totalItems}
+        pageSize={pageSize}
+      />
+
       {/* Full Poster Modal Lightbox Dialog */}
       <Dialog open={!!selectedPoster} onOpenChange={(open) => !open && setSelectedPoster(null)}>
-        <DialogContent className="max-w-4xl max-h-[94vh] p-0 overflow-hidden bg-slate-950 border border-slate-800 text-white shadow-2xl flex flex-col rounded-3xl">
+        <DialogContent className="max-w-4xl max-h-[95vh] p-0 overflow-hidden bg-slate-950 border border-slate-800 text-white shadow-2xl flex flex-col rounded-3xl">
           {/* Lightbox Header */}
-          <div className="flex items-start justify-between gap-4 p-4 sm:p-5 border-b border-slate-800/80 bg-slate-900/90 pr-12">
+          <div className="flex items-start justify-between gap-4 p-4 sm:p-5 border-b border-slate-800/80 bg-slate-900/90 pr-12 shrink-0">
             <div>
               <Badge className="bg-sky-500/20 text-sky-300 border-sky-400/30 text-[11px] font-bold mb-1">
                 Poster Event Medical
@@ -167,19 +192,19 @@ function EventPage() {
             </div>
           </div>
 
-          {/* Lightbox Body (Full Aspect Ratio Viewport - No Cropping) */}
-          <div className="flex-1 overflow-auto p-2 sm:p-4 flex items-center justify-center bg-black/70 min-h-[350px]">
+          {/* Lightbox Body (Full Aspect Ratio Viewport - Zero Cropping) */}
+          <div className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-6 flex flex-col items-center bg-black/80">
             {selectedPoster?.banner_url ? (
               <img
                 src={selectedPoster.banner_url}
                 alt={selectedPoster.title}
-                className="max-h-[70vh] w-auto max-w-full rounded-xl object-contain shadow-2xl"
+                className="my-auto max-h-[68vh] sm:max-h-[72vh] w-auto max-w-full rounded-2xl object-contain shadow-2xl transition-all"
               />
             ) : null}
           </div>
 
           {/* Lightbox Footer Actions */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 border-t border-slate-800/80 bg-slate-900/90">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 border-t border-slate-800/80 bg-slate-900/90 shrink-0">
             <p className="text-xs text-slate-300 line-clamp-2 text-center sm:text-left font-medium max-w-lg">
               {selectedPoster?.description}
             </p>

@@ -25,6 +25,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { PaginationControl, usePagination } from "@/components/ui/pagination-control";
 import {
   deleteWorkerFeedback,
   getStoredFeedbacks,
@@ -76,6 +77,12 @@ function AdminFeedbackPage() {
     const matchStatus = statusFilter === "all" ? true : fb.status === statusFilter;
     return matchSearch && matchCategory && matchStatus;
   });
+
+  const feedbackPagination = usePagination(filteredFeedbacks, 15);
+
+  useEffect(() => {
+    feedbackPagination.setCurrentPage(1);
+  }, [searchQuery, categoryFilter, statusFilter]);
 
   const totalCount = feedbacks.length;
   const baruCount = feedbacks.filter((f) => f.status === "baru").length;
@@ -207,7 +214,7 @@ function AdminFeedbackPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredFeedbacks.map((item) => (
+                  feedbackPagination.paginatedItems.map((item) => (
                     <TableRow key={item.id} className="hover:bg-slate-50/50 transition-colors">
                       <TableCell className="font-bold text-slate-900 text-xs">
                         <div>
@@ -280,6 +287,15 @@ function AdminFeedbackPage() {
               </TableBody>
             </Table>
           </div>
+
+          <PaginationControl
+            currentPage={feedbackPagination.currentPage}
+            totalPages={feedbackPagination.totalPages}
+            totalItems={feedbackPagination.totalItems}
+            pageSize={feedbackPagination.pageSize}
+            onPageChange={feedbackPagination.setCurrentPage}
+            itemLabel="feedback"
+          />
         </CardContent>
       </Card>
     </div>

@@ -31,6 +31,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { PaginationControl, usePagination } from "@/components/ui/pagination-control";
 import {
   deletePembekalanModule,
   deletePembekalanQuizQuestion,
@@ -55,7 +56,11 @@ function AdminPembekalanPage() {
   const modules = useQuery({
     queryKey: ["pembekalan-modules-admin"],
     queryFn: () => listPembekalanModules(true),
+    staleTime: 3 * 60 * 1000,
   });
+
+  const moduleList = modules.data ?? [];
+  const modulePagination = usePagination(moduleList, 6);
 
   const [openModal, setOpenModal] = useState(false);
   const [editingModule, setEditingModule] = useState<Partial<PembekalanModule> | null>(null);
@@ -166,7 +171,7 @@ function AdminPembekalanPage() {
       </div>
 
       <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-        {(modules.data ?? []).map((mod) => (
+        {modulePagination.paginatedItems.map((mod) => (
           <div
             key={mod.id}
             className="glass-card group overflow-hidden rounded-3xl p-5 border border-white/80 transition-all duration-300 hover:shadow-glow flex flex-col justify-between"
@@ -239,6 +244,15 @@ function AdminPembekalanPage() {
           </div>
         ))}
       </div>
+
+      <PaginationControl
+        currentPage={modulePagination.currentPage}
+        totalPages={modulePagination.totalPages}
+        totalItems={modulePagination.totalItems}
+        pageSize={modulePagination.pageSize}
+        onPageChange={modulePagination.setCurrentPage}
+        itemLabel="modul"
+      />
 
       {/* Modal Add / Edit Module */}
       <Dialog open={openModal} onOpenChange={setOpenModal}>

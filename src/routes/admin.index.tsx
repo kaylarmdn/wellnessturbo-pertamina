@@ -46,7 +46,7 @@ function AdminDashboard() {
   const pembekalanProgress = useQuery({
     queryKey: ["pembekalan-progress"],
     queryFn: () => listPembekalanProgress(""),
-    refetchInterval: 5000,
+    staleTime: 1000 * 60 * 3,
   });
 
   const totalUsers = users.data?.length ?? 0;

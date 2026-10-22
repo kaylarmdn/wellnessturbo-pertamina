@@ -163,8 +163,7 @@ function Beranda() {
       }
     },
     enabled: !!sheetUrl,
-    refetchInterval: 10000,
-    staleTime: 5000,
+    staleTime: 1000 * 60 * 3, // 3 minutes cache
   });
 
   const handleSubmitFeedback = (e: React.FormEvent) => {
@@ -312,19 +311,25 @@ function Beranda() {
           <div className="relative z-10 grid gap-6 xl:grid-cols-12 xl:items-center w-full min-w-0">
             <Link
               to="/event"
-              className="xl:col-span-5 relative overflow-hidden rounded-2xl border border-white/80 shadow-md min-w-0 group cursor-pointer block"
+              className="xl:col-span-5 relative overflow-hidden rounded-2xl border border-white/80 shadow-md min-w-0 group cursor-pointer block bg-slate-950 flex items-center justify-center"
               title="Klik untuk membuka Event & Poster Lengkap"
             >
+              {event.banner_url ? (
+                <div
+                  className="absolute inset-0 bg-cover bg-center filter blur-xl scale-110 opacity-40"
+                  style={{ backgroundImage: `url(${event.banner_url})` }}
+                />
+              ) : null}
               <img
                 src={event.banner_url || "/images/cosmic_wellness_hero.jpg"}
                 alt={event.title}
                 loading="lazy"
-                className="h-48 sm:h-56 w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                className="relative z-10 h-48 sm:h-56 w-full object-contain transition-transform duration-700 group-hover:scale-105"
               />
-              <Badge className="absolute top-3 left-3 bg-rose-500 text-white font-bold border-none shadow-md text-xs">
+              <Badge className="absolute top-3 left-3 z-20 bg-rose-500 text-white font-bold border-none shadow-md text-xs">
                 <CalendarHeart className="h-3.5 w-3.5 mr-1" /> Campaign Medical
               </Badge>
-              <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+              <div className="absolute inset-0 z-20 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                 <span className="rounded-full bg-white/95 px-3.5 py-1.5 text-xs font-bold text-slate-900 shadow-lg backdrop-blur-md">
                   🔍 Buka Full Poster
                 </span>

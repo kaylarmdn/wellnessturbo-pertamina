@@ -22,6 +22,7 @@ import { toast } from "sonner";
 import { RequireUser } from "@/components/RequireUser";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { PaginationControl, usePagination } from "@/components/ui/pagination-control";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import {
   getCurrentProgramWeek,
@@ -129,6 +130,19 @@ function WorkerChallengePage() {
     return item.category === activeTab;
   });
 
+  const {
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    paginatedItems: paginatedChallengeList,
+    totalItems,
+    pageSize,
+  } = usePagination(filteredList, 6);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, setCurrentPage]);
+
   const getCategoryBadge = (category: ChallengeCategory) => {
     switch (category) {
       case "dre":
@@ -231,7 +245,7 @@ function WorkerChallengePage() {
 
       {/* Challenge Grid */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {filteredList.map((item) => {
+        {paginatedChallengeList.map((item) => {
           const comp = completions.find((c) => c.user_id === user?.id && c.challenge_id === item.id);
           const currentCount = comp?.completed_count ?? 0;
           const isDone = currentCount >= item.target_count;
@@ -349,6 +363,15 @@ function WorkerChallengePage() {
           </div>
         )}
       </div>
+
+      <PaginationControl
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalItems={totalItems}
+        pageSize={pageSize}
+        onPageChange={setCurrentPage}
+        itemLabel="challenge"
+      />
     </div>
   );
 }

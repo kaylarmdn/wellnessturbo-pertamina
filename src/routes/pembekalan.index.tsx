@@ -46,12 +46,14 @@ function PembekalanList() {
   const modules = useQuery({
     queryKey: ["pembekalan-modules"],
     queryFn: () => listPembekalanModules(false),
+    staleTime: 3 * 60 * 1000,
   });
 
   const progress = useQuery({
     queryKey: ["pembekalan-progress", user?.id],
     queryFn: () => listPembekalanProgress(user!.id),
     enabled: !!user,
+    staleTime: 2 * 60 * 1000,
   });
 
   const sortedModules = [...(modules.data ?? [])].sort((a, b) => a.module_order - b.module_order);

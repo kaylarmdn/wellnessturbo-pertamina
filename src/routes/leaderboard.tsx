@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { RequireUser } from "@/components/RequireUser";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { PaginationControl, usePagination } from "@/components/ui/pagination-control";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import {
   buildLeaderboard,
@@ -12,6 +13,7 @@ import {
   getDummyBfaLeaderboard,
   getDummyGroupLeaderboard,
   getDummyKonsistensiLeaderboard,
+  invalidateCache,
   listChallenges,
   listParticipation,
   listUsers,
@@ -80,13 +82,12 @@ function LeaderboardPage() {
           ? "POIN BFA"
           : "TURBO RACE";
 
-  // Spreadsheet query with active sheet category & auto-update polling
+  // Spreadsheet query with active sheet category
   const spreadsheetQuery = useQuery({
     queryKey: ["spreadsheet-leaderboard", sheetUrl, sheetCategory],
     queryFn: () => (sheetUrl ? fetchSpreadsheetLeaderboard(sheetUrl, sheetCategory) : Promise.resolve([])),
     enabled: !!sheetUrl,
-    refetchInterval: 10000,
-    staleTime: 5000,
+    staleTime: 1000 * 60 * 2, // 2 minutes stale time
   });
 
   const list = challenges.data ?? [];
@@ -112,6 +113,15 @@ function LeaderboardPage() {
 
   // Re-rank rows
   const board = sortLeaderboardRows(rawBoard);
+
+  const {
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    paginatedItems: paginatedBoard,
+    totalItems,
+    pageSize,
+  } = usePagination(board, 15);
 
   const me = board.find(
     (r) =>
@@ -212,7 +222,11 @@ function LeaderboardPage() {
             <Button
               variant="outline"
               size="icon"
-              onClick={() => spreadsheetQuery.refetch()}
+              onClick={() => {
+                invalidateCache(/board_/);
+                invalidateCache(/user_meta_map_/);
+                spreadsheetQuery.refetch();
+              }}
               disabled={spreadsheetQuery.isFetching}
               title="Refresh Data Spreadsheet"
               className="h-8 w-8 rounded-xl border-slate-200 bg-white hover:bg-slate-50 shadow-xs"
@@ -346,7 +360,7 @@ function LeaderboardPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {board.map((row) => {
+            {paginatedBoard.map((row) => {
               const isCurrent = me && me.name.trim().toLowerCase() === row.name.trim().toLowerCase();
               return (
                 <tr
@@ -462,6 +476,14 @@ function LeaderboardPage() {
           </tbody>
         </table>
       </div>
+
+      <PaginationControl
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={setCurrentPage}
+        totalItems={totalItems}
+        pageSize={pageSize}
+      />
 
       <p className="flex items-start gap-2 text-xs text-slate-500 font-medium">
         <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-sky-600" />

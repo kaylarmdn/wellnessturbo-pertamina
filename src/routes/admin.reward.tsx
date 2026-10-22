@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { PaginationControl, usePagination } from "@/components/ui/pagination-control";
 import {
   Dialog,
   DialogContent,
@@ -196,6 +197,24 @@ function AdminRewardPage() {
     return matchName && matchLocation && matchStatus;
   });
 
+  const {
+    currentPage: claimPage,
+    setCurrentPage: setClaimPage,
+    totalPages: totalClaimPages,
+    paginatedItems: paginatedClaims,
+    totalItems: totalClaimItems,
+    pageSize: claimPageSize,
+  } = usePagination(filteredClaims, 15);
+
+  const {
+    currentPage: rewardPage,
+    setCurrentPage: setRewardPage,
+    totalPages: totalRewardPages,
+    paginatedItems: paginatedRewards,
+    totalItems: totalRewardItems,
+    pageSize: rewardPageSize,
+  } = usePagination(rewards, 9);
+
   const getCategoryBadge = (category: RewardCategory) => {
     switch (category) {
       case "milestone":
@@ -310,7 +329,7 @@ function AdminRewardPage() {
                         </TableCell>
                       </TableRow>
                     ) : (
-                      filteredClaims.map((claim) => (
+                      paginatedClaims.map((claim) => (
                         <TableRow key={claim.id} className="hover:bg-slate-50/50 transition-colors">
                           <TableCell className="font-bold text-slate-900 text-xs">
                             <div className="flex items-center gap-2">
@@ -393,6 +412,14 @@ function AdminRewardPage() {
                   </TableBody>
                 </Table>
               </div>
+
+              <PaginationControl
+                currentPage={claimPage}
+                totalPages={totalClaimPages}
+                onPageChange={setClaimPage}
+                totalItems={totalClaimItems}
+                pageSize={claimPageSize}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -418,7 +445,7 @@ function AdminRewardPage() {
 
             <CardContent>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {rewards.map((reward) => (
+                {paginatedRewards.map((reward) => (
                   <div
                     key={reward.id}
                     className="rounded-2xl border border-purple-100 bg-white p-4 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between"
@@ -457,6 +484,14 @@ function AdminRewardPage() {
                   </div>
                 ))}
               </div>
+
+              <PaginationControl
+                currentPage={rewardPage}
+                totalPages={totalRewardPages}
+                onPageChange={setRewardPage}
+                totalItems={totalRewardItems}
+                pageSize={rewardPageSize}
+              />
             </CardContent>
           </Card>
         </TabsContent>

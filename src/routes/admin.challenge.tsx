@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { PaginationControl, usePagination } from "@/components/ui/pagination-control";
 import {
   deleteChallengeItem,
   getStoredChallengeCompletions,
@@ -58,11 +59,13 @@ function AdminChallengePage() {
   const challengesQuery = useQuery({
     queryKey: ["admin-challenge-items", refreshKey],
     queryFn: () => getStoredChallengeItems(),
+    staleTime: 2 * 60 * 1000,
   });
 
   const completionsQuery = useQuery({
     queryKey: ["admin-challenge-completions", refreshKey],
     queryFn: () => getStoredChallengeCompletions(),
+    staleTime: 2 * 60 * 1000,
   });
 
   const challenges = challengesQuery.data ?? [];
@@ -130,6 +133,9 @@ function AdminChallengePage() {
       (challenge && challenge.title.toLowerCase().includes(q))
     );
   });
+
+  const recapPagination = usePagination(filteredCompletions, 15);
+  const managePagination = usePagination(challenges, 9);
 
   const getCategoryBadge = (category: ChallengeCategory) => {
     switch (category) {
@@ -239,7 +245,7 @@ function AdminChallengePage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredCompletions.map((comp) => {
+                {recapPagination.paginatedItems.map((comp) => {
                   const ch = challenges.find((item) => item.id === comp.challenge_id);
                   const targetCount = ch?.target_count ?? 1;
                   const isDone = comp.completed_count >= targetCount;
@@ -296,6 +302,15 @@ function AdminChallengePage() {
               </tbody>
             </table>
           </div>
+
+          <PaginationControl
+            currentPage={recapPagination.currentPage}
+            totalPages={recapPagination.totalPages}
+            totalItems={recapPagination.totalItems}
+            pageSize={recapPagination.pageSize}
+            onPageChange={recapPagination.setCurrentPage}
+            itemLabel="rekaman"
+          />
         </div>
       )}
 
@@ -309,7 +324,7 @@ function AdminChallengePage() {
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {challenges.map((item) => {
+            {managePagination.paginatedItems.map((item) => {
               const catInfo = getCategoryBadge(item.category);
               return (
                 <div key={item.id} className="rounded-2xl border border-border p-4 space-y-3 bg-card flex flex-col justify-between shadow-xs">
@@ -353,6 +368,15 @@ function AdminChallengePage() {
               );
             })}
           </div>
+
+          <PaginationControl
+            currentPage={managePagination.currentPage}
+            totalPages={managePagination.totalPages}
+            totalItems={managePagination.totalItems}
+            pageSize={managePagination.pageSize}
+            onPageChange={managePagination.setCurrentPage}
+            itemLabel="challenge"
+          />
         </div>
       )}
 

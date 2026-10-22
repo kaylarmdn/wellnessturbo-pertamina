@@ -20,8 +20,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PaginationControl, usePagination } from "@/components/ui/pagination-control";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { fetchAdminLeaderboardAll, getDummyAdminLeaderboard, sortLeaderboardRows } from "@/lib/api";
+import { fetchAdminLeaderboardAll, getDummyAdminLeaderboard, invalidateCache, sortLeaderboardRows } from "@/lib/api";
 import { getStoredSheetUrl, setStoredSheetUrl } from "@/lib/session";
 import type { LeaderboardRow } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -57,8 +58,7 @@ function AdminLeaderboardPage() {
   const leaderboardQuery = useQuery({
     queryKey: ["admin-leaderboard-all", activeUrl],
     queryFn: () => (activeUrl ? fetchAdminLeaderboardAll(activeUrl) : Promise.resolve(getDummyAdminLeaderboard())),
-    refetchInterval: 10000,
-    staleTime: 5000,
+    staleTime: 1000 * 60 * 2, // 2 minutes
   });
 
   const rawData: LeaderboardRow[] = leaderboardQuery.data && leaderboardQuery.data.length > 0
@@ -115,6 +115,15 @@ function AdminLeaderboardPage() {
   // Sort and re-rank filtered list
   const rankedBoard = sortLeaderboardRows(filteredData);
 
+  const {
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    paginatedItems: paginatedRankedBoard,
+    totalItems,
+    pageSize,
+  } = usePagination(rankedBoard, 20);
+
   // Stats calculation
   const totalCount = rankedBoard.length;
   const noverCount = rawData.filter((r) => !(r.category || "").toUpperCase().includes("UNDER")).length;
@@ -141,7 +150,12 @@ function AdminLeaderboardPage() {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => leaderboardQuery.refetch()}
+          onClick={() => {
+            invalidateCache(/admin_leaderboard_all_/);
+            invalidateCache(/board_/);
+            invalidateCache(/user_meta_map_/);
+            leaderboardQuery.refetch();
+          }}
           disabled={leaderboardQuery.isFetching}
           className="rounded-xl font-bold shrink-0 self-start sm:self-auto shadow-xs"
         >
@@ -348,7 +362,7 @@ function AdminLeaderboardPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {rankedBoard.map((row) => {
+              {paginatedRankedBoard.map((row) => {
                 const isUnder = (row.category || "").toUpperCase().includes("UNDER");
                 const isBfa = (row.category || "").toUpperCase().includes("BFA");
 
@@ -430,6 +444,16 @@ function AdminLeaderboardPage() {
               )}
             </tbody>
           </table>
+        </div>
+
+        <div className="p-4 border-t border-border">
+          <PaginationControl
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            totalItems={totalItems}
+            pageSize={pageSize}
+          />
         </div>
       </div>
     </div>

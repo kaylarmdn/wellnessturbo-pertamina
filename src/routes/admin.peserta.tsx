@@ -13,7 +13,8 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { fetchSpreadsheetLeaderboard, listUsers } from "@/lib/api";
+import { PaginationControl, usePagination } from "@/components/ui/pagination-control";
+import { fetchSpreadsheetLeaderboard, invalidateCache, listUsers } from "@/lib/api";
 import { getStoredSheetUrl, setStoredSheetUrl } from "@/lib/session";
 
 export const Route = createFileRoute("/admin/peserta")({
@@ -43,8 +44,7 @@ function AdminPesertaPage() {
     queryKey: ["admin-participants-turborace", sheetUrl],
     queryFn: () => (sheetUrl ? fetchSpreadsheetLeaderboard(sheetUrl, "TURBO RACE") : Promise.resolve([])),
     enabled: !!sheetUrl,
-    refetchInterval: 10000,
-    staleTime: 5000,
+    staleTime: 1000 * 60 * 2,
   });
 
   const handleSaveSheetUrl = (e: React.FormEvent) => {
@@ -96,6 +96,15 @@ function AdminPesertaPage() {
     return true;
   });
 
+  const {
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    paginatedItems: paginatedParticipants,
+    totalItems,
+    pageSize,
+  } = usePagination(filtered, 20);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -113,7 +122,11 @@ function AdminPesertaPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => spreadsheetQuery.refetch()}
+            onClick={() => {
+              invalidateCache(/board_/);
+              invalidateCache(/user_meta_map_/);
+              spreadsheetQuery.refetch();
+            }}
             disabled={spreadsheetQuery.isFetching}
             className="rounded-xl font-bold shrink-0 self-start sm:self-auto shadow-xs"
           >
@@ -202,41 +215,44 @@ function AdminPesertaPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {filtered.map((u, idx) => (
-              <tr key={`${u.id}-${idx}`} className="hover:bg-muted/40 transition-colors">
-                <td className="px-4 py-3 text-xs font-bold text-slate-500">{idx + 1}</td>
-                <td className="px-4 py-3 font-semibold text-primary-deep">
-                  <p className="text-sm font-bold">{u.name}</p>
-                  <span className="text-[11px] text-muted-foreground font-normal">{u.email}</span>
-                </td>
-                <td className="px-4 py-3 font-mono text-xs font-semibold text-slate-700">
-                  {u.employee_number}
-                </td>
-                <td className="px-4 py-3 text-center">
-                  {!u.gender || u.gender === "-" ? (
-                    <span className="text-xs font-semibold text-slate-400">-</span>
-                  ) : u.gender === "Laki-laki" ? (
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-sky-100 text-sky-800 border border-sky-300">
-                      ♂ Laki-laki
-                    </span>
-                  ) : u.gender === "Perempuan" ? (
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-pink-100 text-pink-800 border border-pink-300">
-                      ♀ Perempuan
-                    </span>
-                  ) : (
-                    <span className="text-xs font-semibold text-slate-600">{u.gender}</span>
-                  )}
-                </td>
-                <td className="px-4 py-3 text-xs text-muted-foreground">
-                  <p className="font-semibold text-foreground">{u.location}</p>
-                  <p>{u.function}</p>
-                </td>
-                <td className="px-4 py-3 text-right">
-                  <span className="text-base font-black text-primary">{u.points}</span>
-                  <span className="text-xs font-bold text-muted-foreground ml-1">pts</span>
-                </td>
-              </tr>
-            ))}
+            {paginatedParticipants.map((u, idx) => {
+              const itemNumber = (currentPage - 1) * pageSize + idx + 1;
+              return (
+                <tr key={`${u.id}-${idx}`} className="hover:bg-muted/40 transition-colors">
+                  <td className="px-4 py-3 text-xs font-bold text-slate-500">{itemNumber}</td>
+                  <td className="px-4 py-3 font-semibold text-primary-deep">
+                    <p className="text-sm font-bold">{u.name}</p>
+                    <span className="text-[11px] text-muted-foreground font-normal">{u.email}</span>
+                  </td>
+                  <td className="px-4 py-3 font-mono text-xs font-semibold text-slate-700">
+                    {u.employee_number}
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    {!u.gender || u.gender === "-" ? (
+                      <span className="text-xs font-semibold text-slate-400">-</span>
+                    ) : u.gender === "Laki-laki" ? (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-sky-100 text-sky-800 border border-sky-300">
+                        ♂ Laki-laki
+                      </span>
+                    ) : u.gender === "Perempuan" ? (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-pink-100 text-pink-800 border border-pink-300">
+                        ♀ Perempuan
+                      </span>
+                    ) : (
+                      <span className="text-xs font-semibold text-slate-600">{u.gender}</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-xs text-muted-foreground">
+                    <p className="font-semibold text-foreground">{u.location}</p>
+                    <p>{u.function}</p>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <span className="text-base font-black text-primary">{u.points}</span>
+                    <span className="text-xs font-bold text-muted-foreground ml-1">pts</span>
+                  </td>
+                </tr>
+              );
+            })}
             {filtered.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground text-xs">
@@ -247,6 +263,14 @@ function AdminPesertaPage() {
           </tbody>
         </table>
       </div>
+
+      <PaginationControl
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={setCurrentPage}
+        totalItems={totalItems}
+        pageSize={pageSize}
+      />
     </div>
   );
 }
