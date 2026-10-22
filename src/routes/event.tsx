@@ -173,7 +173,7 @@ function EventPage() {
 
       {/* Full Poster Modal Lightbox Dialog */}
       <Dialog open={!!selectedPoster} onOpenChange={(open) => !open && setSelectedPoster(null)}>
-        <DialogContent className="max-w-4xl max-h-[95vh] p-0 overflow-hidden bg-slate-950 border border-slate-800 text-white shadow-2xl flex flex-col rounded-3xl">
+        <DialogContent className="max-w-5xl w-[96vw] h-[92vh] max-h-[92vh] p-0 overflow-hidden bg-slate-950 border border-slate-800 text-white shadow-2xl flex flex-col rounded-3xl">
           {/* Lightbox Header */}
           <div className="flex items-start justify-between gap-4 p-4 sm:p-5 border-b border-slate-800/80 bg-slate-900/90 pr-12 shrink-0">
             <div>
@@ -193,12 +193,12 @@ function EventPage() {
           </div>
 
           {/* Lightbox Body (Full Aspect Ratio Viewport - Zero Cropping) */}
-          <div className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-6 flex flex-col items-center bg-black/80">
+          <div className="flex-1 min-h-0 overflow-y-auto p-2 sm:p-4 flex flex-col items-center justify-center bg-black/95">
             {selectedPoster?.banner_url ? (
               <img
                 src={selectedPoster.banner_url}
                 alt={selectedPoster.title}
-                className="my-auto max-h-[68vh] sm:max-h-[72vh] w-auto max-w-full rounded-2xl object-contain shadow-2xl transition-all"
+                className="m-auto h-auto w-auto max-h-full max-w-full rounded-2xl object-contain shadow-2xl"
               />
             ) : null}
           </div>
