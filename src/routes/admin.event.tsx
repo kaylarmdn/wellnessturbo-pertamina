@@ -132,15 +132,15 @@ function AdminEventPage() {
               key={evt.id}
               className="flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition hover:shadow-md"
             >
-              <div className="relative aspect-[4/3] sm:aspect-[16/10] bg-slate-900 overflow-hidden flex items-center justify-center">
+              <div className="relative bg-slate-900 overflow-hidden flex items-center justify-center w-full">
                 {evt.banner_url ? (
                   <img
                     src={evt.banner_url}
                     alt={evt.title}
-                    className="h-full w-full object-cover object-top"
+                    className="w-full h-auto object-contain"
                   />
                 ) : (
-                  <div className="grid h-full place-items-center bg-primary-soft text-primary">
+                  <div className="grid h-48 w-full place-items-center bg-primary-soft text-primary">
                     <ImageIcon className="h-8 w-8" />
                   </div>
                 )}

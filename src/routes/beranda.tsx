@@ -318,7 +318,7 @@ function Beranda() {
                 src={event.banner_url || "/images/cosmic_wellness_hero.jpg"}
                 alt={event.title}
                 loading="lazy"
-                className="h-64 sm:h-80 w-full object-cover object-top transition-transform duration-700 group-hover:scale-105"
+                className="w-full h-auto object-contain transition-transform duration-700 group-hover:scale-102"
               />
               <Badge className="absolute top-3 left-3 z-20 bg-rose-500 text-white font-bold border-none shadow-md text-xs">
                 <CalendarHeart className="h-3.5 w-3.5 mr-1" /> Campaign Medical

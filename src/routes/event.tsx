@@ -87,14 +87,14 @@ function EventPage() {
                     }
                   }}
                   title="Klik untuk melihat poster penuh"
-                  className="relative cursor-pointer overflow-hidden bg-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full aspect-[4/3] sm:aspect-[16/10]"
+                  className="relative cursor-pointer overflow-hidden bg-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full"
                 >
-                  {/* Full Bleed Banner Image */}
+                  {/* Full Height Vertical Poster - Zero Height Cropping */}
                   <img
                     src={event.banner_url}
                     alt={event.title}
                     loading="lazy"
-                    className="h-full w-full object-cover object-top transition-transform duration-700 group-hover:scale-105"
+                    className="w-full h-auto object-contain transition-transform duration-700 group-hover:scale-102"
                   />
 
                   {/* Gradient Overlay & Hover Pill */}
