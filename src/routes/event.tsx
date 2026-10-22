@@ -87,25 +87,18 @@ function EventPage() {
                     }
                   }}
                   title="Klik untuk melihat poster penuh"
-                  className="relative cursor-pointer overflow-hidden bg-slate-950 focus:outline-none focus:ring-2 focus:ring-indigo-500 flex items-center justify-center"
-                  style={{ aspectRatio: branding.bannerAspectRatio }}
+                  className="relative cursor-pointer overflow-hidden bg-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full aspect-[4/3] sm:aspect-[16/10]"
                 >
-                  {/* Ambient Blurred Background to fill banner aspect ratio without awkward bars */}
-                  <div
-                    className="absolute inset-0 bg-cover bg-center filter blur-xl scale-110 opacity-50"
-                    style={{ backgroundImage: `url(${event.banner_url})` }}
-                  />
-
-                  {/* Main Uncropped Poster */}
+                  {/* Full Bleed Banner Image */}
                   <img
                     src={event.banner_url}
                     alt={event.title}
                     loading="lazy"
-                    className="relative z-10 h-full w-full object-contain transition-transform duration-700 group-hover:scale-105"
+                    className="h-full w-full object-cover object-top transition-transform duration-700 group-hover:scale-105"
                   />
 
                   {/* Gradient Overlay & Hover Pill */}
-                  <div className="absolute inset-0 z-20 bg-gradient-to-t from-slate-950/80 via-transparent to-black/30 opacity-0 transition-opacity duration-300 group-hover:opacity-100 flex items-center justify-center">
+                  <div className="absolute inset-0 z-20 bg-gradient-to-t from-slate-950/80 via-transparent to-black/20 opacity-0 transition-opacity duration-300 group-hover:opacity-100 flex items-center justify-center">
                     <span className="flex items-center gap-2 rounded-full bg-white/95 px-4 py-2 text-xs font-bold text-slate-900 shadow-2xl backdrop-blur-md transition-transform duration-300 group-hover:scale-105">
                       <Maximize2 className="h-4 w-4 text-indigo-600" /> Lihat Full Poster
                     </span>

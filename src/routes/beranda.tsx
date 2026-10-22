@@ -311,20 +311,14 @@ function Beranda() {
           <div className="relative z-10 grid gap-6 xl:grid-cols-12 xl:items-center w-full min-w-0">
             <Link
               to="/event"
-              className="xl:col-span-5 relative overflow-hidden rounded-2xl border border-white/80 shadow-md min-w-0 group cursor-pointer block bg-slate-950 flex items-center justify-center"
+              className="xl:col-span-5 relative overflow-hidden rounded-2xl border border-white/80 shadow-md min-w-0 group cursor-pointer block bg-slate-900"
               title="Klik untuk membuka Event & Poster Lengkap"
             >
-              {event.banner_url ? (
-                <div
-                  className="absolute inset-0 bg-cover bg-center filter blur-xl scale-110 opacity-40"
-                  style={{ backgroundImage: `url(${event.banner_url})` }}
-                />
-              ) : null}
               <img
                 src={event.banner_url || "/images/cosmic_wellness_hero.jpg"}
                 alt={event.title}
                 loading="lazy"
-                className="relative z-10 h-48 sm:h-56 w-full object-contain transition-transform duration-700 group-hover:scale-105"
+                className="h-64 sm:h-80 w-full object-cover object-top transition-transform duration-700 group-hover:scale-105"
               />
               <Badge className="absolute top-3 left-3 z-20 bg-rose-500 text-white font-bold border-none shadow-md text-xs">
                 <CalendarHeart className="h-3.5 w-3.5 mr-1" /> Campaign Medical

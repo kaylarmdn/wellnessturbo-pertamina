@@ -10,8 +10,8 @@ export const branding = {
   welcomeTitle: "Selamat Datang di Wellness Turbo",
   welcomeSubtitle: "Isi data diri Anda untuk melanjutkan.",
   dashboardSubtitle: "Jaga kesehatan, tingkatkan performa.",
-  bannerAspectRatio: "16 / 6",
-  bannerRecommendedSize: "1600 x 600 px",
+  bannerAspectRatio: "4 / 3",
+  bannerRecommendedSize: "1200 x 900 px",
 };
 
 export const LOCATIONS = [

@@ -132,19 +132,13 @@ function AdminEventPage() {
               key={evt.id}
               className="flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition hover:shadow-md"
             >
-              <div className="relative aspect-[21/9] bg-slate-950 overflow-hidden flex items-center justify-center">
+              <div className="relative aspect-[4/3] sm:aspect-[16/10] bg-slate-900 overflow-hidden flex items-center justify-center">
                 {evt.banner_url ? (
-                  <>
-                    <div
-                      className="absolute inset-0 bg-cover bg-center filter blur-xl scale-110 opacity-40"
-                      style={{ backgroundImage: `url(${evt.banner_url})` }}
-                    />
-                    <img
-                      src={evt.banner_url}
-                      alt={evt.title}
-                      className="relative z-10 h-full w-full object-contain"
-                    />
-                  </>
+                  <img
+                    src={evt.banner_url}
+                    alt={evt.title}
+                    className="h-full w-full object-cover object-top"
+                  />
                 ) : (
                   <div className="grid h-full place-items-center bg-primary-soft text-primary">
                     <ImageIcon className="h-8 w-8" />
