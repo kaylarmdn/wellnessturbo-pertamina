@@ -83,7 +83,7 @@ export async function fetchRekapBulan1Data(
   sheetUrl: string,
   forceRefresh = false
 ): Promise<OverallRekapStats> {
-  const cacheKey = `rekap_bulan1_v2_${sheetUrl}`;
+  const cacheKey = `rekap_bulan1_v3_exact_${sheetUrl}`;
 
   return fetchWithCache(
     cacheKey,

@@ -47,6 +47,11 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
         <p className="mt-2 text-sm text-muted-foreground">
           Terjadi kendala saat memuat halaman. Silakan muat ulang halaman atau kembali ke beranda.
         </p>
+        {error?.message && (
+          <div className="mt-4 p-3 rounded-lg bg-rose-50 border border-rose-200 text-left text-xs font-mono text-rose-700 break-words">
+            <strong>Detail Error:</strong> {error.message}
+          </div>
+        )}
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
             onClick={() => {

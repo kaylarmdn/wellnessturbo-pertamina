@@ -2,24 +2,14 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   Activity,
-  Award,
-  Calendar,
   CheckCircle2,
-  ChevronDown,
   Download,
-  Filter,
   Flame,
-  HelpCircle,
-  Percent,
   RefreshCw,
   Search,
   Sparkles,
   Star,
-  TrendingDown,
-  TrendingUp,
   Trophy,
-  UserCheck,
-  UserX,
   Users,
   XCircle,
 } from "lucide-react";
@@ -63,7 +53,6 @@ import {
   fetchRekapBulan1Data,
   type ActivityTier,
   type OverallRekapStats,
-  type ParticipantRekap,
 } from "@/lib/rekap-bulan1";
 import { getStoredSheetUrl } from "@/lib/session";
 
@@ -153,7 +142,7 @@ function AdminRekapBulan1Page() {
     isError,
     refetch,
   } = useQuery<OverallRekapStats>({
-    queryKey: ["rekap-bulan-1-v2", sheetUrl],
+    queryKey: ["rekap-bulan-1-v3-exact", sheetUrl],
     queryFn: () => fetchRekapBulan1Data(sheetUrl, false),
   });
 
@@ -170,10 +159,36 @@ function AdminRekapBulan1Page() {
     }
   };
 
+  // Safe destructuring with full fallbacks
+  const totalPeserta = rekapData?.totalPeserta ?? 0;
+  const counts = rekapData?.counts ?? {
+    sangatAktif: 0,
+    aktif: 0,
+    cukupAktif: 0,
+    kurangAktif: 0,
+    tidakAktif: 0,
+  };
+  const percentages = rekapData?.percentages ?? {
+    sangatAktif: 0,
+    aktif: 0,
+    cukupAktif: 0,
+    kurangAktif: 0,
+    tidakAktif: 0,
+  };
+  const groupSummaries = rekapData?.groupSummaries ?? [];
+  const polaPartisipasi = rekapData?.polaPartisipasi ?? {
+    dailyAndChallenge: 0,
+    dailyOnly: 0,
+    challengeOnly: 0,
+    neither: 0,
+  };
+  const allParticipants = rekapData?.participants ?? [];
+  const totalPoinSemua = rekapData?.totalPoinSemua ?? 0;
+  const rataRataPoinSeluruh = rekapData?.rataRataPoinSeluruh ?? 0;
+
   // Filtered Participants Table
   const filteredParticipants = useMemo(() => {
-    if (!rekapData) return [];
-    return rekapData.participants.filter((p) => {
+    return allParticipants.filter((p) => {
       // Tab Tier filter
       if (activeTab !== "semua" && p.activityTier !== activeTab) return false;
 
@@ -183,15 +198,15 @@ function AdminRekapBulan1Page() {
       // Search query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
-        const matchName = p.name.toLowerCase().includes(q);
-        const matchNopek = p.nopek.includes(q);
-        const matchLoc = p.location.toLowerCase().includes(q);
+        const matchName = (p.name || "").toLowerCase().includes(q);
+        const matchNopek = (p.nopek || "").includes(q);
+        const matchLoc = (p.location || "").toLowerCase().includes(q);
         if (!matchName && !matchNopek && !matchLoc) return false;
       }
 
       return true;
     });
-  }, [rekapData, activeTab, selectedGroup, searchQuery]);
+  }, [allParticipants, activeTab, selectedGroup, searchQuery]);
 
   // Client-side pagination
   const {
@@ -220,14 +235,14 @@ function AdminRekapBulan1Page() {
     ];
     const rows = filteredParticipants.map((p, idx) => [
       idx + 1,
-      `"${p.name.replace(/"/g, '""')}"`,
-      `"${p.nopek}"`,
-      `"${p.group}"`,
-      `"${p.location.replace(/"/g, '""')}"`,
-      p.poinDaily,
-      p.poinChallenge,
-      p.totalPoin,
-      `"${p.statusLabel}"`,
+      `"${(p.name || "").replace(/"/g, '""')}"`,
+      `"${p.nopek || ""}"`,
+      `"${p.group || ""}"`,
+      `"${(p.location || "").replace(/"/g, '""')}"`,
+      p.poinDaily || 0,
+      p.poinChallenge || 0,
+      p.totalPoin || 0,
+      `"${p.statusLabel || ""}"`,
       `"${p.note || ""}"`,
     ]);
 
@@ -286,68 +301,68 @@ function AdminRekapBulan1Page() {
   const tierPieData = [
     {
       name: "Sangat Aktif (16—20+)",
-      value: rekapData.counts.sangatAktif,
+      value: counts.sangatAktif,
       color: TIER_CONFIG.sangatAktif.color,
     },
     {
       name: "Aktif (11—15)",
-      value: rekapData.counts.aktif,
+      value: counts.aktif,
       color: TIER_CONFIG.aktif.color,
     },
     {
       name: "Cukup Aktif (6—10)",
-      value: rekapData.counts.cukupAktif,
+      value: counts.cukupAktif,
       color: TIER_CONFIG.cukupAktif.color,
     },
     {
       name: "Kurang Aktif (1—5)",
-      value: rekapData.counts.kurangAktif,
+      value: counts.kurangAktif,
       color: TIER_CONFIG.kurangAktif.color,
     },
     {
       name: "Tidak Aktif (0 Poin)",
-      value: rekapData.counts.tidakAktif,
+      value: counts.tidakAktif,
       color: TIER_CONFIG.tidakAktif.color,
     },
   ];
 
   // Chart data: Peserta per Kelompok (Stacked Bar)
-  const groupStackedData = rekapData.groupSummaries.map((g) => ({
+  const groupStackedData = groupSummaries.map((g) => ({
     name: g.group,
-    sangatAktif: g.sangatAktif,
-    aktif: g.aktif,
-    cukupAktif: g.cukupAktif,
-    kurangAktif: g.kurangAktif,
-    tidakAktif: g.tidakAktif,
-    rataRata: Math.round(g.rataRataPoinSeluruh * 10) / 10,
-    totalPoin: g.totalPoin,
+    sangatAktif: g.sangatAktif || 0,
+    aktif: g.aktif || 0,
+    cukupAktif: g.cukupAktif || 0,
+    kurangAktif: g.kurangAktif || 0,
+    tidakAktif: g.tidakAktif || 0,
+    rataRata: Math.round((g.rataRataPoinSeluruh || 0) * 10) / 10,
+    totalPoin: g.totalPoin || 0,
   }));
 
   // Chart data: Pola Partisipasi
   const participationPieData = [
     {
       name: "Daily & Challenge",
-      value: rekapData.polaPartisipasi.dailyAndChallenge,
+      value: polaPartisipasi.dailyAndChallenge,
       color: PART_COLORS.dailyChallenge,
     },
     {
       name: "Daily Saja",
-      value: rekapData.polaPartisipasi.dailyOnly,
+      value: polaPartisipasi.dailyOnly,
       color: PART_COLORS.dailyOnly,
     },
     {
       name: "Challenge Saja",
-      value: rekapData.polaPartisipasi.challengeOnly,
+      value: polaPartisipasi.challengeOnly,
       color: PART_COLORS.challengeOnly,
     },
     {
-      name: "Tidak Ada Keduanya (0)",
-      value: rekapData.polaPartisipasi.neither,
+      name: "Nol Keduanya (0)",
+      value: polaPartisipasi.neither,
       color: PART_COLORS.neither,
     },
   ];
 
-  const allGroups = ["all", ...rekapData.groupSummaries.map((g) => g.group)];
+  const allGroups = ["all", ...groupSummaries.map((g) => g.group)];
 
   return (
     <div className="space-y-6 pb-16">
@@ -413,7 +428,7 @@ function AdminRekapBulan1Page() {
         </div>
       </div>
 
-      {/* ===================== 6 METRIC CARDS (SESUAI LOGIKA) ===================== */}
+      {/* ===================== 6 METRIC CARDS ===================== */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5">
         {/* 1. Total Peserta */}
         <Card className="rounded-2xl border-slate-200 shadow-2xs hover:shadow-xs transition-shadow">
@@ -428,7 +443,7 @@ function AdminRekapBulan1Page() {
             </div>
             <div className="mt-2">
               <div className="text-2xl font-black text-slate-800">
-                {rekapData.totalPeserta}
+                {totalPeserta}
               </div>
               <p className="text-[11px] text-slate-500 mt-0.5">Seluruh peserta terdaftar</p>
             </div>
@@ -448,10 +463,10 @@ function AdminRekapBulan1Page() {
             </div>
             <div className="mt-2">
               <div className="text-2xl font-black text-emerald-700">
-                {rekapData.counts.sangatAktif}
+                {counts.sangatAktif}
               </div>
               <p className="text-[11px] text-emerald-600 font-medium mt-0.5">
-                {rekapData.percentages.sangatAktif.toFixed(1).replace(".", ",")}% • 16—20+ Poin
+                {(percentages.sangatAktif || 0).toFixed(1).replace(".", ",")}% • 16—20+ Poin
               </p>
             </div>
           </CardContent>
@@ -470,10 +485,10 @@ function AdminRekapBulan1Page() {
             </div>
             <div className="mt-2">
               <div className="text-2xl font-black text-teal-700">
-                {rekapData.counts.aktif}
+                {counts.aktif}
               </div>
               <p className="text-[11px] text-teal-600 font-medium mt-0.5">
-                {rekapData.percentages.aktif.toFixed(1).replace(".", ",")}% • 11—15 Poin
+                {(percentages.aktif || 0).toFixed(1).replace(".", ",")}% • 11—15 Poin
               </p>
             </div>
           </CardContent>
@@ -492,10 +507,10 @@ function AdminRekapBulan1Page() {
             </div>
             <div className="mt-2">
               <div className="text-2xl font-black text-amber-700">
-                {rekapData.counts.cukupAktif}
+                {counts.cukupAktif}
               </div>
               <p className="text-[11px] text-amber-600 font-medium mt-0.5">
-                {rekapData.percentages.cukupAktif.toFixed(1).replace(".", ",")}% • 6—10 Poin
+                {(percentages.cukupAktif || 0).toFixed(1).replace(".", ",")}% • 6—10 Poin
               </p>
             </div>
           </CardContent>
@@ -514,10 +529,10 @@ function AdminRekapBulan1Page() {
             </div>
             <div className="mt-2">
               <div className="text-2xl font-black text-orange-700">
-                {rekapData.counts.kurangAktif}
+                {counts.kurangAktif}
               </div>
               <p className="text-[11px] text-orange-600 font-medium mt-0.5">
-                {rekapData.percentages.kurangAktif.toFixed(1).replace(".", ",")}% • 1—5 Poin
+                {(percentages.kurangAktif || 0).toFixed(1).replace(".", ",")}% • 1—5 Poin
               </p>
             </div>
           </CardContent>
@@ -536,10 +551,10 @@ function AdminRekapBulan1Page() {
             </div>
             <div className="mt-2">
               <div className="text-2xl font-black text-rose-600">
-                {rekapData.counts.tidakAktif}
+                {counts.tidakAktif}
               </div>
               <p className="text-[11px] text-rose-500 font-medium mt-0.5">
-                {rekapData.percentages.tidakAktif.toFixed(1).replace(".", ",")}% • 0 Poin
+                {(percentages.tidakAktif || 0).toFixed(1).replace(".", ",")}% • 0 Poin
               </p>
             </div>
           </CardContent>
@@ -574,7 +589,7 @@ function AdminRekapBulan1Page() {
                   </Pie>
                   <Tooltip
                     formatter={(val: number) => [
-                      `${val} peserta (${((val / rekapData.totalPeserta) * 100).toFixed(1)}%)`,
+                      `${val} peserta (${totalPeserta > 0 ? ((val / totalPeserta) * 100).toFixed(1) : 0}%)`,
                       "",
                     ]}
                   />
@@ -586,7 +601,7 @@ function AdminRekapBulan1Page() {
               </div>
             )}
             <div className="absolute top-[37%] left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
-              <div className="text-xl font-black text-slate-800">{rekapData.totalPeserta}</div>
+              <div className="text-xl font-black text-slate-800">{totalPeserta}</div>
               <div className="text-[10px] text-slate-500 font-medium">Peserta</div>
             </div>
 
@@ -594,24 +609,24 @@ function AdminRekapBulan1Page() {
             <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-1 text-[11px]">
               <div className="flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-600" />
-                <span className="text-slate-600">Sangat Aktif ({rekapData.counts.sangatAktif})</span>
+                <span className="text-slate-600">Sangat Aktif ({counts.sangatAktif})</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                <span className="text-slate-600">Aktif ({rekapData.counts.aktif})</span>
+                <span className="text-slate-600">Aktif ({counts.aktif})</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-                <span className="text-slate-600">Cukup Aktif ({rekapData.counts.cukupAktif})</span>
+                <span className="text-slate-600">Cukup Aktif ({counts.cukupAktif})</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 rounded-full bg-orange-500" />
-                <span className="text-slate-600">Kurang Aktif ({rekapData.counts.kurangAktif})</span>
+                <span className="text-slate-600">Kurang Aktif ({counts.kurangAktif})</span>
               </div>
               <div className="flex items-center gap-1.5 col-span-2 justify-center pt-0.5">
                 <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
                 <span className="text-slate-600 font-semibold text-rose-700">
-                  Tidak Aktif ({rekapData.counts.tidakAktif})
+                  Tidak Aktif ({counts.tidakAktif})
                 </span>
               </div>
             </div>
@@ -719,7 +734,7 @@ function AdminRekapBulan1Page() {
               ) : null}
               <div className="absolute top-[48%] left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
                 <div className="text-sm font-black text-slate-800">
-                  {rekapData.totalPeserta}
+                  {totalPeserta}
                 </div>
               </div>
             </div>
@@ -730,7 +745,7 @@ function AdminRekapBulan1Page() {
                   <span className="w-2 h-2 rounded-full bg-emerald-500" /> Daily & Challenge
                 </span>
                 <span className="font-bold text-slate-800">
-                  {rekapData.polaPartisipasi.dailyAndChallenge}
+                  {polaPartisipasi.dailyAndChallenge}
                 </span>
               </div>
               <div className="flex items-center justify-between">
@@ -738,7 +753,7 @@ function AdminRekapBulan1Page() {
                   <span className="w-2 h-2 rounded-full bg-sky-500" /> Daily Saja
                 </span>
                 <span className="font-bold text-slate-800">
-                  {rekapData.polaPartisipasi.dailyOnly}
+                  {polaPartisipasi.dailyOnly}
                 </span>
               </div>
               <div className="flex items-center justify-between">
@@ -746,7 +761,7 @@ function AdminRekapBulan1Page() {
                   <span className="w-2 h-2 rounded-full bg-amber-500" /> Challenge Saja
                 </span>
                 <span className="font-bold text-slate-800">
-                  {rekapData.polaPartisipasi.challengeOnly}
+                  {polaPartisipasi.challengeOnly}
                 </span>
               </div>
               <div className="flex items-center justify-between">
@@ -754,7 +769,7 @@ function AdminRekapBulan1Page() {
                   <span className="w-2 h-2 rounded-full bg-rose-500" /> Nol Keduanya
                 </span>
                 <span className="font-bold text-slate-800">
-                  {rekapData.polaPartisipasi.neither}
+                  {polaPartisipasi.neither}
                 </span>
               </div>
             </div>
@@ -778,7 +793,7 @@ function AdminRekapBulan1Page() {
                   </p>
                 </div>
                 <Badge variant="outline" className="bg-white text-xs font-semibold text-slate-600">
-                  {rekapData.groupSummaries.length} Kelompok
+                  {groupSummaries.length} Kelompok
                 </Badge>
               </div>
             </CardHeader>
@@ -798,7 +813,7 @@ function AdminRekapBulan1Page() {
                   </TableRow>
                 </TableHeader>
                 <TableBody className="text-xs">
-                  {rekapData.groupSummaries.map((g) => (
+                  {groupSummaries.map((g) => (
                     <TableRow key={g.group} className="hover:bg-slate-50/70">
                       <TableCell className="font-semibold text-slate-800">{g.group}</TableCell>
                       <TableCell className="text-center font-medium text-slate-600">
@@ -823,7 +838,7 @@ function AdminRekapBulan1Page() {
                         {g.totalPoin}
                       </TableCell>
                       <TableCell className="text-right font-semibold text-indigo-600">
-                        {g.rataRataPoinSeluruh.toFixed(1).replace(".", ",")}
+                        {(g.rataRataPoinSeluruh || 0).toFixed(1).replace(".", ",")}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -831,28 +846,28 @@ function AdminRekapBulan1Page() {
                   <TableRow className="bg-amber-50/60 font-bold border-t-2 border-slate-300 text-xs">
                     <TableCell className="font-black text-slate-900">TOTAL</TableCell>
                     <TableCell className="text-center font-black text-slate-900">
-                      {rekapData.totalPeserta}
+                      {totalPeserta}
                     </TableCell>
                     <TableCell className="text-center font-black text-emerald-800">
-                      {rekapData.counts.sangatAktif}
+                      {counts.sangatAktif}
                     </TableCell>
                     <TableCell className="text-center font-black text-teal-800">
-                      {rekapData.counts.aktif}
+                      {counts.aktif}
                     </TableCell>
                     <TableCell className="text-center font-black text-amber-800">
-                      {rekapData.counts.cukupAktif}
+                      {counts.cukupAktif}
                     </TableCell>
                     <TableCell className="text-center font-black text-orange-800">
-                      {rekapData.counts.kurangAktif}
+                      {counts.kurangAktif}
                     </TableCell>
                     <TableCell className="text-center font-black text-rose-700">
-                      {rekapData.counts.tidakAktif}
+                      {counts.tidakAktif}
                     </TableCell>
                     <TableCell className="text-right font-black text-slate-900">
-                      {rekapData.totalPoinSemua}
+                      {totalPoinSemua}
                     </TableCell>
                     <TableCell className="text-right font-black text-indigo-800">
-                      {rekapData.rataRataPoinSeluruh.toFixed(1).replace(".", ",")}
+                      {rataRataPoinSeluruh.toFixed(1).replace(".", ",")}
                     </TableCell>
                   </TableRow>
                 </TableBody>
@@ -870,10 +885,10 @@ function AdminRekapBulan1Page() {
               Kelompok Partisipasi Tertinggi
             </div>
             <div className="mt-2 text-base font-black text-slate-800">
-              {rekapData.kelompokPalingAktif?.name || "-"}
+              {rekapData?.kelompokPalingAktif?.name || "-"}
             </div>
             <div className="text-2xl font-black text-emerald-700 mt-1">
-              {rekapData.kelompokPalingAktif?.pct.toFixed(1).replace(".", ",")}%
+              {(rekapData?.kelompokPalingAktif?.pct || 0).toFixed(1).replace(".", ",")}%
             </div>
             <div className="text-xs text-slate-500 mt-0.5">
               Peserta memiliki poin kegiatan Bulan 1
@@ -887,13 +902,13 @@ function AdminRekapBulan1Page() {
               Rata-rata Poin Tertinggi
             </div>
             <div className="mt-2 text-base font-black text-slate-800">
-              {rekapData.kelompokTertinggiPoin?.name || "-"}
+              {rekapData?.kelompokTertinggiPoin?.name || "-"}
             </div>
             <div className="text-2xl font-black text-blue-700 mt-1">
-              {rekapData.kelompokTertinggiPoin?.avg.toFixed(1).replace(".", ",")} poin
+              {(rekapData?.kelompokTertinggiPoin?.avg || 0).toFixed(1).replace(".", ",")} poin
             </div>
             <div className="text-xs text-slate-500 mt-0.5">
-              Total terkumpul {rekapData.kelompokTertinggiPoin?.totalPoin} poin
+              Total terkumpul {rekapData?.kelompokTertinggiPoin?.totalPoin || 0} poin
             </div>
           </Card>
 
@@ -904,10 +919,10 @@ function AdminRekapBulan1Page() {
               Rata-rata Poin Seluruh Peserta
             </div>
             <div className="mt-2 text-2xl font-black text-slate-800">
-              {rekapData.rataRataPoinSeluruh.toFixed(1).replace(".", ",")} poin
+              {rataRataPoinSeluruh.toFixed(1).replace(".", ",")} poin
             </div>
             <div className="text-xs text-slate-500 mt-0.5">
-              Akumulasi total {rekapData.totalPoinSemua} poin dari 203 peserta
+              Akumulasi total {totalPoinSemua} poin dari {totalPeserta} peserta
             </div>
           </Card>
         </div>
@@ -947,22 +962,22 @@ function AdminRekapBulan1Page() {
             >
               <TabsList className="bg-slate-100 p-1 rounded-xl flex-wrap h-auto">
                 <TabsTrigger value="semua" className="text-xs font-semibold rounded-lg">
-                  Semua ({rekapData.totalPeserta})
+                  Semua ({totalPeserta})
                 </TabsTrigger>
                 <TabsTrigger value="sangat_aktif" className="text-xs font-semibold rounded-lg text-emerald-800">
-                  Sangat Aktif ({rekapData.counts.sangatAktif})
+                  Sangat Aktif ({counts.sangatAktif})
                 </TabsTrigger>
                 <TabsTrigger value="aktif" className="text-xs font-semibold rounded-lg text-teal-800">
-                  Aktif ({rekapData.counts.aktif})
+                  Aktif ({counts.aktif})
                 </TabsTrigger>
                 <TabsTrigger value="cukup_aktif" className="text-xs font-semibold rounded-lg text-amber-800">
-                  Cukup ({rekapData.counts.cukupAktif})
+                  Cukup ({counts.cukupAktif})
                 </TabsTrigger>
                 <TabsTrigger value="kurang_aktif" className="text-xs font-semibold rounded-lg text-orange-800">
-                  Kurang ({rekapData.counts.kurangAktif})
+                  Kurang ({counts.kurangAktif})
                 </TabsTrigger>
                 <TabsTrigger value="tidak_aktif" className="text-xs font-semibold rounded-lg text-rose-800">
-                  Tidak Aktif ({rekapData.counts.tidakAktif})
+                  Tidak Aktif ({counts.tidakAktif})
                 </TabsTrigger>
               </TabsList>
             </Tabs>
@@ -1032,7 +1047,7 @@ function AdminRekapBulan1Page() {
                 </TableRow>
               ) : (
                 paginatedList.map((p, idx) => {
-                  const conf = TIER_CONFIG[p.activityTier];
+                  const conf = (p.activityTier && TIER_CONFIG[p.activityTier]) || TIER_CONFIG.tidak_aktif;
                   return (
                     <TableRow key={`${p.nopek}-${p.name}`} className="hover:bg-slate-50/70">
                       <TableCell className="text-center text-slate-500 font-medium">
@@ -1051,26 +1066,26 @@ function AdminRekapBulan1Page() {
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline" className="bg-white font-medium text-slate-700 text-[11px]">
-                          {p.group}
+                          {p.group || "Lainnya"}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-slate-600 max-w-[180px] truncate" title={p.location}>
                         {p.location || "-"}
                       </TableCell>
                       <TableCell className="text-center font-medium text-slate-700">
-                        {p.poinDaily}
+                        {p.poinDaily || 0}
                       </TableCell>
                       <TableCell className="text-center font-medium text-slate-700">
-                        {p.poinChallenge}
+                        {p.poinChallenge || 0}
                       </TableCell>
                       <TableCell className="text-center font-black text-slate-900">
-                        {p.totalPoin}
+                        {p.totalPoin || 0}
                       </TableCell>
                       <TableCell className="text-center">
                         <span
                           className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${conf.bgBadge} ${conf.textBadge} ${conf.borderBadge}`}
                         >
-                          {p.statusLabel}
+                          {p.statusLabel || "Tidak Aktif"}
                         </span>
                       </TableCell>
                     </TableRow>
