@@ -20,7 +20,7 @@ import {
   Users,
   XCircle,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -81,6 +81,11 @@ const PIE_COLORS = {
 };
 
 function AdminRekapBulan1Page() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const [sheetUrl] = useState<string>(() => {
     return (
       getStoredSheetUrl() ||
@@ -141,17 +146,15 @@ function AdminRekapBulan1Page() {
     });
   }, [rekapData, activeTab, selectedGroup, searchQuery]);
 
-  const pagination = usePagination({
-    totalItems: filteredParticipants.length,
-    initialPageSize: 10,
-  });
-
-  const paginatedList = useMemo(() => {
-    return filteredParticipants.slice(
-      pagination.startIndex,
-      pagination.startIndex + pagination.pageSize
-    );
-  }, [filteredParticipants, pagination.startIndex, pagination.pageSize]);
+  // Client-side pagination using hook correctly
+  const {
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    paginatedItems: paginatedList,
+    totalItems,
+    pageSize,
+  } = usePagination(filteredParticipants, 10);
 
   // Export CSV
   const handleExportCsv = () => {
@@ -464,29 +467,35 @@ function AdminRekapBulan1Page() {
             </CardTitle>
           </CardHeader>
           <CardContent className="flex-1 flex flex-col items-center justify-center min-h-[260px] relative">
-            <ResponsiveContainer width="100%" height={200}>
-              <PieChart>
-                <Pie
-                  data={distributionPieData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={55}
-                  outerRadius={80}
-                  paddingAngle={3}
-                  dataKey="value"
-                >
-                  {distributionPieData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  formatter={(val: number) => [
-                    `${val} peserta (${((val / rekapData.totalPeserta) * 100).toFixed(1)}%)`,
-                    "",
-                  ]}
-                />
-              </PieChart>
-            </ResponsiveContainer>
+            {mounted ? (
+              <ResponsiveContainer width="100%" height={200}>
+                <PieChart>
+                  <Pie
+                    data={distributionPieData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={55}
+                    outerRadius={80}
+                    paddingAngle={3}
+                    dataKey="value"
+                  >
+                    {distributionPieData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    formatter={(val: number) => [
+                      `${val} peserta (${((val / rekapData.totalPeserta) * 100).toFixed(1)}%)`,
+                      "",
+                    ]}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[200px] flex items-center justify-center text-slate-400 text-xs">
+                Memuat grafik...
+              </div>
+            )}
             {/* Center Count */}
             <div className="absolute top-[38%] left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
               <div className="text-lg font-black text-slate-800">{rekapData.totalPeserta}</div>
@@ -518,36 +527,42 @@ function AdminRekapBulan1Page() {
             </CardTitle>
           </CardHeader>
           <CardContent className="flex-1 min-h-[260px] pt-2">
-            <ResponsiveContainer width="100%" height={230}>
-              <BarChart
-                data={groupChartData}
-                margin={{ top: 10, right: 10, left: -20, bottom: 20 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                <XAxis
-                  dataKey="name"
-                  angle={-35}
-                  textAnchor="end"
-                  interval={0}
-                  tick={{ fontSize: 9, fill: "#64748B" }}
-                />
-                <YAxis tick={{ fontSize: 10, fill: "#64748B" }} />
-                <Tooltip />
-                <Legend
-                  verticalAlign="top"
-                  align="right"
-                  wrapperStyle={{ fontSize: "11px", paddingBottom: "6px" }}
-                />
-                <Bar dataKey="aktif" name="Aktif" stackId="a" fill={PIE_COLORS.aktif} radius={[0, 0, 0, 0]} />
-                <Bar
-                  dataKey="tidakAktif"
-                  name="Tidak Aktif"
-                  stackId="a"
-                  fill={PIE_COLORS.tidakAktif}
-                  radius={[3, 3, 0, 0]}
-                />
-              </BarChart>
-            </ResponsiveContainer>
+            {mounted ? (
+              <ResponsiveContainer width="100%" height={230}>
+                <BarChart
+                  data={groupChartData}
+                  margin={{ top: 10, right: 10, left: -20, bottom: 20 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                  <XAxis
+                    dataKey="name"
+                    angle={-35}
+                    textAnchor="end"
+                    interval={0}
+                    tick={{ fontSize: 9, fill: "#64748B" }}
+                  />
+                  <YAxis tick={{ fontSize: 10, fill: "#64748B" }} />
+                  <Tooltip />
+                  <Legend
+                    verticalAlign="top"
+                    align="right"
+                    wrapperStyle={{ fontSize: "11px", paddingBottom: "6px" }}
+                  />
+                  <Bar dataKey="aktif" name="Aktif" stackId="a" fill={PIE_COLORS.aktif} radius={[0, 0, 0, 0]} />
+                  <Bar
+                    dataKey="tidakAktif"
+                    name="Tidak Aktif"
+                    stackId="a"
+                    fill={PIE_COLORS.tidakAktif}
+                    radius={[3, 3, 0, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[230px] flex items-center justify-center text-slate-400 text-xs">
+                Memuat grafik...
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -559,29 +574,35 @@ function AdminRekapBulan1Page() {
             </CardTitle>
           </CardHeader>
           <CardContent className="flex-1 min-h-[260px] pt-2">
-            <ResponsiveContainer width="100%" height={230}>
-              <BarChart
-                layout="vertical"
-                data={groupChartData}
-                margin={{ top: 5, right: 25, left: 10, bottom: 5 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E2E8F0" />
-                <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10, fill: "#64748B" }} />
-                <YAxis
-                  dataKey="name"
-                  type="category"
-                  tick={{ fontSize: 9, fill: "#64748B" }}
-                  width={68}
-                />
-                <Tooltip formatter={(val: number) => [`${val}%`, "Keaktifan"]} />
-                <Bar
-                  dataKey="persen"
-                  name="% Keaktifan"
-                  fill="#10B981"
-                  radius={[0, 4, 4, 0]}
-                />
-              </BarChart>
-            </ResponsiveContainer>
+            {mounted ? (
+              <ResponsiveContainer width="100%" height={230}>
+                <BarChart
+                  layout="vertical"
+                  data={groupChartData}
+                  margin={{ top: 5, right: 25, left: 10, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E2E8F0" />
+                  <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10, fill: "#64748B" }} />
+                  <YAxis
+                    dataKey="name"
+                    type="category"
+                    tick={{ fontSize: 9, fill: "#64748B" }}
+                    width={68}
+                  />
+                  <Tooltip formatter={(val: number) => [`${val}%`, "Keaktifan"]} />
+                  <Bar
+                    dataKey="persen"
+                    name="% Keaktifan"
+                    fill="#10B981"
+                    radius={[0, 4, 4, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[230px] flex items-center justify-center text-slate-400 text-xs">
+                Memuat grafik...
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -593,29 +614,35 @@ function AdminRekapBulan1Page() {
             </CardTitle>
           </CardHeader>
           <CardContent className="flex-1 min-h-[260px] pt-2">
-            <ResponsiveContainer width="100%" height={230}>
-              <BarChart
-                layout="vertical"
-                data={groupChartData}
-                margin={{ top: 5, right: 25, left: 10, bottom: 5 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E2E8F0" />
-                <XAxis type="number" tick={{ fontSize: 10, fill: "#64748B" }} />
-                <YAxis
-                  dataKey="name"
-                  type="category"
-                  tick={{ fontSize: 9, fill: "#64748B" }}
-                  width={68}
-                />
-                <Tooltip formatter={(val: number) => [`${val} poin`, "Rata-rata"]} />
-                <Bar
-                  dataKey="rataRata"
-                  name="Rata-rata Poin"
-                  fill="#38BDF8"
-                  radius={[0, 4, 4, 0]}
-                />
-              </BarChart>
-            </ResponsiveContainer>
+            {mounted ? (
+              <ResponsiveContainer width="100%" height={230}>
+                <BarChart
+                  layout="vertical"
+                  data={groupChartData}
+                  margin={{ top: 5, right: 25, left: 10, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E2E8F0" />
+                  <XAxis type="number" tick={{ fontSize: 10, fill: "#64748B" }} />
+                  <YAxis
+                    dataKey="name"
+                    type="category"
+                    tick={{ fontSize: 9, fill: "#64748B" }}
+                    width={68}
+                  />
+                  <Tooltip formatter={(val: number) => [`${val} poin`, "Rata-rata"]} />
+                  <Bar
+                    dataKey="rataRata"
+                    name="Rata-rata Poin"
+                    fill="#38BDF8"
+                    radius={[0, 4, 4, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[230px] flex items-center justify-center text-slate-400 text-xs">
+                Memuat grafik...
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -728,24 +755,30 @@ function AdminRekapBulan1Page() {
             <CardContent className="p-4">
               <div className="flex flex-col sm:flex-row items-center gap-4">
                 <div className="w-40 h-40 shrink-0 relative">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={participationPieData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={40}
-                        outerRadius={65}
-                        paddingAngle={2}
-                        dataKey="value"
-                      >
-                        {participationPieData.map((entry, index) => (
-                          <Cell key={`part-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
+                  {mounted ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={participationPieData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={40}
+                          outerRadius={65}
+                          paddingAngle={2}
+                          dataKey="value"
+                        >
+                          {participationPieData.map((entry, index) => (
+                            <Cell key={`part-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-slate-400 text-xs">
+                      ...
+                    </div>
+                  )}
                   <div className="absolute top-[48%] left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
                     <div className="text-base font-black text-slate-800">
                       {rekapData.totalPeserta}
@@ -920,7 +953,7 @@ function AdminRekapBulan1Page() {
               value={activeTab}
               onValueChange={(v) => {
                 setActiveTab(v as any);
-                pagination.setPage(1);
+                setCurrentPage(1);
               }}
             >
               <TabsList className="bg-slate-100 p-1 rounded-xl">
@@ -942,7 +975,7 @@ function AdminRekapBulan1Page() {
                 value={selectedGroup}
                 onValueChange={(v) => {
                   setSelectedGroup(v);
-                  pagination.setPage(1);
+                  setCurrentPage(1);
                 }}
               >
                 <SelectTrigger className="h-9 w-[160px] text-xs rounded-xl">
@@ -967,7 +1000,7 @@ function AdminRekapBulan1Page() {
                   value={searchQuery}
                   onChange={(e) => {
                     setSearchQuery(e.target.value);
-                    pagination.setPage(1);
+                    setCurrentPage(1);
                   }}
                   placeholder="Cari nama / nopek..."
                   className="pl-8 h-9 text-xs rounded-xl"
@@ -1003,7 +1036,7 @@ function AdminRekapBulan1Page() {
                 paginatedList.map((p, idx) => (
                   <TableRow key={`${p.nopek}-${p.name}`} className="hover:bg-slate-50/70">
                     <TableCell className="text-center text-slate-500 font-medium">
-                      {pagination.startIndex + idx + 1}
+                      {(currentPage - 1) * pageSize + idx + 1}
                     </TableCell>
                     <TableCell className="font-semibold text-slate-900">
                       {p.name}
@@ -1055,15 +1088,20 @@ function AdminRekapBulan1Page() {
         {filteredParticipants.length > 0 && (
           <div className="p-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50/40">
             <div className="text-xs text-slate-500">
-              Menampilkan {pagination.startIndex + 1} -{" "}
-              {Math.min(pagination.startIndex + pagination.pageSize, filteredParticipants.length)} dari{" "}
-              {filteredParticipants.length} peserta
+              Menampilkan {(currentPage - 1) * pageSize + 1} -{" "}
+              {Math.min(currentPage * pageSize, totalItems)} dari {totalItems} peserta
             </div>
-            <PaginationControl pagination={pagination} />
+            <PaginationControl
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              totalItems={totalItems}
+              pageSize={pageSize}
+              itemLabel="peserta"
+            />
           </div>
         )}
       </Card>
     </div>
   );
 }
-
