@@ -66,13 +66,21 @@ export const Route = createFileRoute("/admin/rekap-bulan-1")({
 
 // Palet warna untuk 5 Tingkat Keaktifan
 const TIER_CONFIG: Record<
-  ActivityTier,
+  string,
   { label: string; range: string; color: string; bgBadge: string; textBadge: string; borderBadge: string }
 > = {
   sangat_aktif: {
     label: "Sangat Aktif",
     range: "16—20+ Poin",
     color: "#059669", // Emerald 600
+    bgBadge: "bg-emerald-100",
+    textBadge: "text-emerald-800",
+    borderBadge: "border-emerald-300",
+  },
+  sangatAktif: {
+    label: "Sangat Aktif",
+    range: "16—20+ Poin",
+    color: "#059669",
     bgBadge: "bg-emerald-100",
     textBadge: "text-emerald-800",
     borderBadge: "border-emerald-300",
@@ -93,6 +101,14 @@ const TIER_CONFIG: Record<
     textBadge: "text-amber-800",
     borderBadge: "border-amber-300",
   },
+  cukupAktif: {
+    label: "Cukup Aktif",
+    range: "6—10 Poin",
+    color: "#F59E0B",
+    bgBadge: "bg-amber-100",
+    textBadge: "text-amber-800",
+    borderBadge: "border-amber-300",
+  },
   kurang_aktif: {
     label: "Kurang Aktif",
     range: "1—5 Poin",
@@ -101,10 +117,26 @@ const TIER_CONFIG: Record<
     textBadge: "text-orange-800",
     borderBadge: "border-orange-300",
   },
+  kurangAktif: {
+    label: "Kurang Aktif",
+    range: "1—5 Poin",
+    color: "#F97316",
+    bgBadge: "bg-orange-100",
+    textBadge: "text-orange-800",
+    borderBadge: "border-orange-300",
+  },
   tidak_aktif: {
     label: "Tidak Aktif",
     range: "0 Poin",
     color: "#F43F5E", // Rose 500
+    bgBadge: "bg-rose-100",
+    textBadge: "text-rose-800",
+    borderBadge: "border-rose-300",
+  },
+  tidakAktif: {
+    label: "Tidak Aktif",
+    range: "0 Poin",
+    color: "#F43F5E",
     bgBadge: "bg-rose-100",
     textBadge: "text-rose-800",
     borderBadge: "border-rose-300",
@@ -302,27 +334,27 @@ function AdminRekapBulan1Page() {
     {
       name: "Sangat Aktif (16—20+)",
       value: counts.sangatAktif,
-      color: TIER_CONFIG.sangatAktif.color,
+      color: TIER_CONFIG.sangatAktif?.color || "#059669",
     },
     {
       name: "Aktif (11—15)",
       value: counts.aktif,
-      color: TIER_CONFIG.aktif.color,
+      color: TIER_CONFIG.aktif?.color || "#10B981",
     },
     {
       name: "Cukup Aktif (6—10)",
       value: counts.cukupAktif,
-      color: TIER_CONFIG.cukupAktif.color,
+      color: TIER_CONFIG.cukupAktif?.color || "#F59E0B",
     },
     {
       name: "Kurang Aktif (1—5)",
       value: counts.kurangAktif,
-      color: TIER_CONFIG.kurangAktif.color,
+      color: TIER_CONFIG.kurangAktif?.color || "#F97316",
     },
     {
       name: "Tidak Aktif (0 Poin)",
       value: counts.tidakAktif,
-      color: TIER_CONFIG.tidakAktif.color,
+      color: TIER_CONFIG.tidakAktif?.color || "#F43F5E",
     },
   ];
 
@@ -666,31 +698,31 @@ function AdminRekapBulan1Page() {
                     dataKey="sangatAktif"
                     name="Sangat Aktif"
                     stackId="a"
-                    fill={TIER_CONFIG.sangatAktif.color}
+                    fill={TIER_CONFIG.sangatAktif?.color || "#059669"}
                   />
                   <Bar
                     dataKey="aktif"
                     name="Aktif"
                     stackId="a"
-                    fill={TIER_CONFIG.aktif.color}
+                    fill={TIER_CONFIG.aktif?.color || "#10B981"}
                   />
                   <Bar
                     dataKey="cukupAktif"
                     name="Cukup"
                     stackId="a"
-                    fill={TIER_CONFIG.cukupAktif.color}
+                    fill={TIER_CONFIG.cukupAktif?.color || "#F59E0B"}
                   />
                   <Bar
                     dataKey="kurangAktif"
                     name="Kurang"
                     stackId="a"
-                    fill={TIER_CONFIG.kurangAktif.color}
+                    fill={TIER_CONFIG.kurangAktif?.color || "#F97316"}
                   />
                   <Bar
                     dataKey="tidakAktif"
                     name="Tidak Aktif"
                     stackId="a"
-                    fill={TIER_CONFIG.tidakAktif.color}
+                    fill={TIER_CONFIG.tidakAktif?.color || "#F43F5E"}
                     radius={[3, 3, 0, 0]}
                   />
                 </BarChart>
