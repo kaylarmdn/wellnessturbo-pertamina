@@ -1,6 +1,13 @@
 import { formatGoogleSheetCsvUrl, parseCsv } from "./api";
 import { fetchWithCache } from "./cache";
 
+export type ActivityTier =
+  | "tidak_aktif" // 0 Poin
+  | "kurang_aktif" // 1 - 5 Poin
+  | "cukup_aktif" // 6 - 10 Poin
+  | "aktif" // 11 - 15 Poin
+  | "sangat_aktif"; // 16 - 20+ Poin
+
 export interface ParticipantRekap {
   no: number;
   name: string;
@@ -10,8 +17,8 @@ export interface ParticipantRekap {
   poinDaily: number;
   poinChallenge: number;
   totalPoin: number;
-  status: "Aktif" | "Tidak Aktif";
-  activityTier: "sangat_aktif" | "aktif" | "cukup" | "tidak_aktif";
+  statusLabel: string; // "Tidak Aktif" | "Kurang Aktif" | "Cukup Aktif" | "Aktif" | "Sangat Aktif"
+  activityTier: ActivityTier;
   participationPattern: "daily_and_challenge" | "daily_only" | "challenge_only" | "neither";
   note?: string;
 }
@@ -19,38 +26,44 @@ export interface ParticipantRekap {
 export interface GroupRekapSummary {
   group: string;
   totalPeserta: number;
-  pesertaAktif: number;
-  pesertaTidakAktif: number;
-  persenKeaktifan: number;
+  sangatAktif: number; // 16 - 20+
+  aktif: number; // 11 - 15
+  cukupAktif: number; // 6 - 10
+  kurangAktif: number; // 1 - 5
+  tidakAktif: number; // 0
+  totalAktifDanCukup: number; // > 5
+  persenKeaktifan: number; // (peserta dengan poin > 0 / total) * 100
   totalPoin: number;
   rataRataPoinSeluruh: number;
-  rataRataPoinAktif: number;
 }
 
 export interface OverallRekapStats {
   totalPeserta: number;
-  pesertaAktif: number;
-  pesertaTidakAktif: number;
-  persenKeaktifan: number;
-  rataRataPoinSeluruh: number;
-  rataRataPoinAktif: number;
+  counts: {
+    sangatAktif: number; // 16 - 20+
+    aktif: number; // 11 - 15
+    cukupAktif: number; // 6 - 10
+    kurangAktif: number; // 1 - 5
+    tidakAktif: number; // 0
+  };
+  percentages: {
+    sangatAktif: number;
+    aktif: number;
+    cukupAktif: number;
+    kurangAktif: number;
+    tidakAktif: number;
+  };
   totalPoinSemua: number;
+  rataRataPoinSeluruh: number;
   polaPartisipasi: {
     dailyAndChallenge: number;
     dailyOnly: number;
     challengeOnly: number;
     neither: number;
   };
-  sebaranPoin: {
-    lt5: number;
-    bt5_9: number;
-    bt10_15: number;
-    gt15: number;
-  };
-  kelompokTertinggiKeaktifan: { name: string; pct: number; active: number; total: number } | null;
-  kelompokTerendahKeaktifan: { name: string; pct: number; active: number; total: number } | null;
   kelompokTertinggiPoin: { name: string; avg: number; totalPoin: number } | null;
   kelompokTerendahPoin: { name: string; avg: number; totalPoin: number } | null;
+  kelompokPalingAktif: { name: string; pct: number; count: number; total: number } | null;
   groupSummaries: GroupRekapSummary[];
   participants: ParticipantRekap[];
 }
@@ -62,26 +75,21 @@ function parseNumber(val: string | undefined | null): number {
   return isNaN(num) ? 0 : num;
 }
 
-function normalizeGroupName(raw: string): string {
-  const upper = raw.trim().toUpperCase();
-  if (upper.includes("UNDERWEIGHT") || upper.includes("UNDER")) return "Underweight";
-  const m = upper.match(/NOVER\s*(\d+)/i);
-  if (m) return `Nover ${m[1]}`;
-  return raw.trim() || "Lainnya";
+function cleanStr(s: string): string {
+  return (s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
 export async function fetchRekapBulan1Data(
   sheetUrl: string,
-  threshold: number = 5,
   forceRefresh = false
 ): Promise<OverallRekapStats> {
-  const cacheKey = `rekap_bulan1_${sheetUrl}_th${threshold}`;
+  const cacheKey = `rekap_bulan1_v2_${sheetUrl}`;
 
   return fetchWithCache(
     cacheKey,
     async () => {
-      // 1. Fetch group tabs in parallel
-      const groupTabNames = [
+      // 1. Tab kelompok yang sah: UNDERWEIGHT, NOVER1 s/d NOVER10
+      const groupTabs = [
         "UNDERWEIGHT",
         "NOVER1",
         "NOVER2",
@@ -107,40 +115,49 @@ export async function fetchRekapBulan1Data(
         }
       };
 
+      // Fetch semua tab secara paralel
       const [dailyCsv, challengeCsv, ...groupCsvs] = await Promise.all([
         fetchTab("POIN DAILY"),
         fetchTab("POIN CHALLENGE"),
-        ...groupTabNames.map((t) => fetchTab(t)),
+        ...groupTabs.map((t) => fetchTab(t)),
       ]);
 
-      // Build User to Group mapping
-      const userGroupMap = new Map<string, string>();
-      groupTabNames.forEach((tabName, idx) => {
+      // 2. Pemetaan Nopek & Nama ke Kelompok spesifik dari sheet masing-masing
+      const nopekToGroup = new Map<string, string>();
+      const nameToGroup = new Map<string, string>();
+
+      groupTabs.forEach((tabName, idx) => {
         const rows = groupCsvs[idx] || [];
-        const normGroup = normalizeGroupName(tabName);
+        const displayGroupName =
+          tabName === "UNDERWEIGHT" ? "Underweight" : `Nover ${tabName.replace("NOVER", "")}`;
+
         for (let i = 1; i < rows.length; i++) {
           const row = rows[i];
-          const name = (row[0] || "").trim().toLowerCase();
+          const name = (row[0] || "").trim();
           const nopek = (row[2] || "").trim();
+          if (nopek) nopekToGroup.set(nopek, displayGroupName);
           if (name) {
-            userGroupMap.set(name, normGroup);
-            if (nopek) userGroupMap.set(nopek, normGroup);
+            nameToGroup.set(name.toLowerCase(), displayGroupName);
+            nameToGroup.set(cleanStr(name), displayGroupName);
           }
         }
       });
 
-      // Build Challenge Points Map
+      // 3. Poin Challenge dari Sheet POIN CHALLENGE Kolom D (POIN PENCAPAIAN)
       const challengePointsMap = new Map<string, number>();
       for (let i = 1; i < challengeCsv.length; i++) {
         const row = challengeCsv[i];
-        const name = (row[0] || "").trim().toLowerCase();
+        const name = (row[0] || "").trim();
         const nopek = (row[1] || "").trim();
-        const pts = parseNumber(row[3]); // Column D = POIN PENCAPAIAN
+        const pts = parseNumber(row[3]); // Kolom D = POIN PENCAPAIAN
         if (nopek) challengePointsMap.set(nopek, pts);
-        if (name) challengePointsMap.set(name, pts);
+        if (name) {
+          challengePointsMap.set(name.toLowerCase(), pts);
+          challengePointsMap.set(cleanStr(name), pts);
+        }
       }
 
-      // Build Daily Points Map & Collect Participants
+      // 4. Proses peserta dari Sheet POIN DAILY
       const participants: ParticipantRekap[] = [];
 
       for (let i = 1; i < dailyCsv.length; i++) {
@@ -152,17 +169,48 @@ export async function fetchRekapBulan1Data(
         if (!name) continue;
 
         const nameKey = name.toLowerCase();
-        const group = userGroupMap.get(nopek) || userGroupMap.get(nameKey) || "Lainnya";
-        const pDaily = parseNumber(row[6]); // Column G = POIN BULAN 1
+        const nameClean = cleanStr(name);
+
+        // Cari kelompok dari mapping sheet UNDERWEIGHT & NOVER1..NOVER10
+        const group =
+          nopekToGroup.get(nopek) ||
+          nameToGroup.get(nameKey) ||
+          nameToGroup.get(nameClean) ||
+          "Lainnya";
+
+        const pDaily = parseNumber(row[6]); // Kolom G = POIN BULAN 1
         const pChallenge =
-          challengePointsMap.get(nopek) ?? (challengePointsMap.get(nameKey) || 0);
+          challengePointsMap.get(nopek) ??
+          (challengePointsMap.get(nameKey) ??
+            (challengePointsMap.get(nameClean) || 0));
+
         const totalPoin = pDaily + pChallenge;
 
-        const isAktif = totalPoin >= threshold;
-        let activityTier: ParticipantRekap["activityTier"] = "tidak_aktif";
-        if (totalPoin > 15) activityTier = "sangat_aktif";
-        else if (totalPoin >= 10) activityTier = "aktif";
-        else if (totalPoin >= 5) activityTier = "cukup";
+        // Logika 5 Kategori Sesuai Arahan:
+        // 0 = tidak aktif
+        // 1—5 = kurang aktif
+        // 6—10 = cukup aktif
+        // 11—15 = aktif
+        // 16—20 = sangat aktif (termasuk > 15 / 16+)
+        let activityTier: ActivityTier;
+        let statusLabel: string;
+
+        if (totalPoin === 0) {
+          activityTier = "tidak_aktif";
+          statusLabel = "Tidak Aktif";
+        } else if (totalPoin <= 5) {
+          activityTier = "kurang_aktif";
+          statusLabel = "Kurang Aktif";
+        } else if (totalPoin <= 10) {
+          activityTier = "cukup_aktif";
+          statusLabel = "Cukup Aktif";
+        } else if (totalPoin <= 15) {
+          activityTier = "aktif";
+          statusLabel = "Aktif";
+        } else {
+          activityTier = "sangat_aktif";
+          statusLabel = "Sangat Aktif";
+        }
 
         let participationPattern: ParticipantRekap["participationPattern"] = "neither";
         if (pDaily > 0 && pChallenge > 0) participationPattern = "daily_and_challenge";
@@ -178,7 +226,7 @@ export async function fetchRekapBulan1Data(
           poinDaily: pDaily,
           poinChallenge: pChallenge,
           totalPoin,
-          status: isAktif ? "Aktif" : "Tidak Aktif",
+          statusLabel,
           activityTier,
           participationPattern,
           note,
@@ -186,19 +234,20 @@ export async function fetchRekapBulan1Data(
       }
 
       const totalPeserta = participants.length;
-      const pesertaAktif = participants.filter((p) => p.status === "Aktif").length;
-      const pesertaTidakAktif = totalPeserta - pesertaAktif;
-      const persenKeaktifan = totalPeserta > 0 ? (pesertaAktif / totalPeserta) * 100 : 0;
+
+      // Hitung jumlah masing-masing tier
+      const sangatAktif = participants.filter((p) => p.activityTier === "sangat_aktif").length;
+      const aktif = participants.filter((p) => p.activityTier === "aktif").length;
+      const cukupAktif = participants.filter((p) => p.activityTier === "cukup_aktif").length;
+      const kurangAktif = participants.filter((p) => p.activityTier === "kurang_aktif").length;
+      const tidakAktif = participants.filter((p) => p.activityTier === "tidak_aktif").length;
+
+      const calcPct = (cnt: number) => (totalPeserta > 0 ? (cnt / totalPeserta) * 100 : 0);
 
       const totalPoinSemua = participants.reduce((acc, p) => acc + p.totalPoin, 0);
-      const totalPoinAktif = participants
-        .filter((p) => p.status === "Aktif")
-        .reduce((acc, p) => acc + p.totalPoin, 0);
-
       const rataRataPoinSeluruh = totalPeserta > 0 ? totalPoinSemua / totalPeserta : 0;
-      const rataRataPoinAktif = pesertaAktif > 0 ? totalPoinAktif / pesertaAktif : 0;
 
-      // Participation Patterns
+      // Pola Partisipasi
       const dailyAndChallenge = participants.filter(
         (p) => p.participationPattern === "daily_and_challenge"
       ).length;
@@ -212,13 +261,7 @@ export async function fetchRekapBulan1Data(
         (p) => p.participationPattern === "neither"
       ).length;
 
-      // Activity Tiers
-      const lt5 = participants.filter((p) => p.activityTier === "tidak_aktif").length;
-      const bt5_9 = participants.filter((p) => p.activityTier === "cukup").length;
-      const bt10_15 = participants.filter((p) => p.activityTier === "aktif").length;
-      const gt15 = participants.filter((p) => p.activityTier === "sangat_aktif").length;
-
-      // Group Summaries
+      // Rekap Per Kelompok (Urutan: Underweight, Nover 1 s/d Nover 10, Lainnya)
       const definedGroupsOrder = [
         "Underweight",
         "Nover 1",
@@ -246,55 +289,42 @@ export async function fetchRekapBulan1Data(
         const members = groupsMap.get(gName);
         if (!members || members.length === 0) continue;
         const total = members.length;
-        const aktif = members.filter((m) => m.status === "Aktif").length;
-        const tidakAktif = total - aktif;
-        const pct = total > 0 ? (aktif / total) * 100 : 0;
+        const sa = members.filter((m) => m.activityTier === "sangat_aktif").length;
+        const ak = members.filter((m) => m.activityTier === "aktif").length;
+        const ca = members.filter((m) => m.activityTier === "cukup_aktif").length;
+        const ka = members.filter((m) => m.activityTier === "kurang_aktif").length;
+        const ta = members.filter((m) => m.activityTier === "tidak_aktif").length;
+
         const sumPts = members.reduce((acc, m) => acc + m.totalPoin, 0);
-        const sumPtsAktif = members
-          .filter((m) => m.status === "Aktif")
-          .reduce((acc, m) => acc + m.totalPoin, 0);
         const avgSeluruh = total > 0 ? sumPts / total : 0;
-        const avgAktif = aktif > 0 ? sumPtsAktif / aktif : 0;
+        const totalPunyaPoin = sa + ak + ca + ka;
+        const pctKeaktifan = total > 0 ? (totalPunyaPoin / total) * 100 : 0;
 
         groupSummaries.push({
           group: gName,
           totalPeserta: total,
-          pesertaAktif: aktif,
-          pesertaTidakAktif: tidakAktif,
-          persenKeaktifan: pct,
+          sangatAktif: sa,
+          aktif: ak,
+          cukupAktif: ca,
+          kurangAktif: ka,
+          tidakAktif: ta,
+          totalAktifDanCukup: sa + ak + ca,
+          persenKeaktifan: pctKeaktifan,
           totalPoin: sumPts,
           rataRataPoinSeluruh: avgSeluruh,
-          rataRataPoinAktif: avgAktif,
         });
       }
 
-      // Highest / Lowest stats (excluding 'Lainnya' if possible)
+      // Min/Max kelompok
       const validForMinMax = groupSummaries.filter(
         (g) => g.group !== "Lainnya" && g.totalPeserta > 0
       );
 
-      let kelompokTertinggiKeaktifan = null;
-      let kelompokTerendahKeaktifan = null;
       let kelompokTertinggiPoin = null;
       let kelompokTerendahPoin = null;
+      let kelompokPalingAktif = null;
 
       if (validForMinMax.length > 0) {
-        const sortedByPct = [...validForMinMax].sort(
-          (a, b) => b.persenKeaktifan - a.persenKeaktifan
-        );
-        kelompokTertinggiKeaktifan = {
-          name: sortedByPct[0].group,
-          pct: sortedByPct[0].persenKeaktifan,
-          active: sortedByPct[0].pesertaAktif,
-          total: sortedByPct[0].totalPeserta,
-        };
-        kelompokTerendahKeaktifan = {
-          name: sortedByPct[sortedByPct.length - 1].group,
-          pct: sortedByPct[sortedByPct.length - 1].persenKeaktifan,
-          active: sortedByPct[sortedByPct.length - 1].pesertaAktif,
-          total: sortedByPct[sortedByPct.length - 1].totalPeserta,
-        };
-
         const sortedByAvg = [...validForMinMax].sort(
           (a, b) => b.rataRataPoinSeluruh - a.rataRataPoinSeluruh
         );
@@ -308,32 +338,45 @@ export async function fetchRekapBulan1Data(
           avg: sortedByAvg[sortedByAvg.length - 1].rataRataPoinSeluruh,
           totalPoin: sortedByAvg[sortedByAvg.length - 1].totalPoin,
         };
+
+        const sortedByPct = [...validForMinMax].sort(
+          (a, b) => b.persenKeaktifan - a.persenKeaktifan
+        );
+        kelompokPalingAktif = {
+          name: sortedByPct[0].group,
+          pct: sortedByPct[0].persenKeaktifan,
+          count: sortedByPct[0].sangatAktif + sortedByPct[0].aktif,
+          total: sortedByPct[0].totalPeserta,
+        };
       }
 
       return {
         totalPeserta,
-        pesertaAktif,
-        pesertaTidakAktif,
-        persenKeaktifan,
-        rataRataPoinSeluruh,
-        rataRataPoinAktif,
+        counts: {
+          sangatAktif,
+          aktif,
+          cukupAktif,
+          kurangAktif,
+          tidakAktif,
+        },
+        percentages: {
+          sangatAktif: calcPct(sangatAktif),
+          aktif: calcPct(aktif),
+          cukupAktif: calcPct(cukupAktif),
+          kurangAktif: calcPct(kurangAktif),
+          tidakAktif: calcPct(tidakAktif),
+        },
         totalPoinSemua,
+        rataRataPoinSeluruh,
         polaPartisipasi: {
           dailyAndChallenge,
           dailyOnly,
           challengeOnly,
           neither,
         },
-        sebaranPoin: {
-          lt5,
-          bt5_9,
-          bt10_15,
-          gt15,
-        },
-        kelompokTertinggiKeaktifan,
-        kelompokTerendahKeaktifan,
         kelompokTertinggiPoin,
         kelompokTerendahPoin,
+        kelompokPalingAktif,
         groupSummaries,
         participants,
       };
@@ -341,4 +384,3 @@ export async function fetchRekapBulan1Data(
     { ttlMs: forceRefresh ? 0 : 2 * 60 * 1000 }
   );
 }
-

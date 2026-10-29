@@ -13,10 +13,13 @@ import {
   Percent,
   RefreshCw,
   Search,
+  Sparkles,
   Star,
   TrendingDown,
   TrendingUp,
   Trophy,
+  UserCheck,
+  UserX,
   Users,
   XCircle,
 } from "lucide-react";
@@ -58,6 +61,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   fetchRekapBulan1Data,
+  type ActivityTier,
   type OverallRekapStats,
   type ParticipantRekap,
 } from "@/lib/rekap-bulan1";
@@ -71,13 +75,58 @@ export const Route = createFileRoute("/admin/rekap-bulan-1")({
   component: AdminRekapBulan1Page,
 });
 
-const PIE_COLORS = {
-  aktif: "#10B981", // Emerald green
-  tidakAktif: "#F43F5E", // Rose / coral
+// Palet warna untuk 5 Tingkat Keaktifan
+const TIER_CONFIG: Record<
+  ActivityTier,
+  { label: string; range: string; color: string; bgBadge: string; textBadge: string; borderBadge: string }
+> = {
+  sangat_aktif: {
+    label: "Sangat Aktif",
+    range: "16—20+ Poin",
+    color: "#059669", // Emerald 600
+    bgBadge: "bg-emerald-100",
+    textBadge: "text-emerald-800",
+    borderBadge: "border-emerald-300",
+  },
+  aktif: {
+    label: "Aktif",
+    range: "11—15 Poin",
+    color: "#10B981", // Emerald 500
+    bgBadge: "bg-teal-100",
+    textBadge: "text-teal-800",
+    borderBadge: "border-teal-300",
+  },
+  cukup_aktif: {
+    label: "Cukup Aktif",
+    range: "6—10 Poin",
+    color: "#F59E0B", // Amber 500
+    bgBadge: "bg-amber-100",
+    textBadge: "text-amber-800",
+    borderBadge: "border-amber-300",
+  },
+  kurang_aktif: {
+    label: "Kurang Aktif",
+    range: "1—5 Poin",
+    color: "#F97316", // Orange 500
+    bgBadge: "bg-orange-100",
+    textBadge: "text-orange-800",
+    borderBadge: "border-orange-300",
+  },
+  tidak_aktif: {
+    label: "Tidak Aktif",
+    range: "0 Poin",
+    color: "#F43F5E", // Rose 500
+    bgBadge: "bg-rose-100",
+    textBadge: "text-rose-800",
+    borderBadge: "border-rose-300",
+  },
+};
+
+const PART_COLORS = {
   dailyChallenge: "#10B981",
   dailyOnly: "#0EA5E9",
   challengeOnly: "#F59E0B",
-  neither: "#EF4444",
+  neither: "#F43F5E",
 };
 
 function AdminRekapBulan1Page() {
@@ -93,8 +142,7 @@ function AdminRekapBulan1Page() {
     );
   });
 
-  const [threshold, setThreshold] = useState<number>(5);
-  const [activeTab, setActiveTab] = useState<"tidak_aktif" | "aktif" | "semua">("tidak_aktif");
+  const [activeTab, setActiveTab] = useState<"semua" | ActivityTier>("semua");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedGroup, setSelectedGroup] = useState<string>("all");
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -105,14 +153,14 @@ function AdminRekapBulan1Page() {
     isError,
     refetch,
   } = useQuery<OverallRekapStats>({
-    queryKey: ["rekap-bulan-1", sheetUrl, threshold],
-    queryFn: () => fetchRekapBulan1Data(sheetUrl, threshold, false),
+    queryKey: ["rekap-bulan-1-v2", sheetUrl],
+    queryFn: () => fetchRekapBulan1Data(sheetUrl, false),
   });
 
   const handleManualRefresh = async () => {
     setIsRefreshing(true);
     try {
-      await fetchRekapBulan1Data(sheetUrl, threshold, true);
+      await fetchRekapBulan1Data(sheetUrl, true);
       await refetch();
       toast.success("Data rekap bulan 1 berhasil diperbarui dari Spreadsheet!");
     } catch (err) {
@@ -126,9 +174,8 @@ function AdminRekapBulan1Page() {
   const filteredParticipants = useMemo(() => {
     if (!rekapData) return [];
     return rekapData.participants.filter((p) => {
-      // Tab filter
-      if (activeTab === "tidak_aktif" && p.status !== "Tidak Aktif") return false;
-      if (activeTab === "aktif" && p.status !== "Aktif") return false;
+      // Tab Tier filter
+      if (activeTab !== "semua" && p.activityTier !== activeTab) return false;
 
       // Group filter
       if (selectedGroup !== "all" && p.group !== selectedGroup) return false;
@@ -146,7 +193,7 @@ function AdminRekapBulan1Page() {
     });
   }, [rekapData, activeTab, selectedGroup, searchQuery]);
 
-  // Client-side pagination using hook correctly
+  // Client-side pagination
   const {
     currentPage,
     setCurrentPage,
@@ -168,7 +215,7 @@ function AdminRekapBulan1Page() {
       "Poin Daily",
       "Poin Challenge",
       "Total Poin",
-      "Status",
+      "Kategori Keaktifan",
       "Catatan",
     ];
     const rows = filteredParticipants.map((p, idx) => [
@@ -180,7 +227,7 @@ function AdminRekapBulan1Page() {
       p.poinDaily,
       p.poinChallenge,
       p.totalPoin,
-      `"${p.status}"`,
+      `"${p.statusLabel}"`,
       `"${p.note || ""}"`,
     ]);
 
@@ -205,7 +252,7 @@ function AdminRekapBulan1Page() {
       <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
         <RefreshCw className="h-10 w-10 animate-spin text-emerald-600" />
         <p className="text-sm font-medium text-slate-600">
-          Mengambil dan menyinkronkan data Poin Daily & Challenge dari Spreadsheet...
+          Mengambil dan menyinkronkan data dari Spreadsheet...
         </p>
       </div>
     );
@@ -223,8 +270,8 @@ function AdminRekapBulan1Page() {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm">
-              Pastikan sheet <strong>POIN DAILY</strong> dan <strong>POIN CHALLENGE</strong> dapat
-              diakses secara publik atau link sheet valid.
+              Pastikan sheet <strong>POIN DAILY</strong>, <strong>POIN CHALLENGE</strong>, dan tab kelompok
+              dapat diakses secara publik.
             </p>
             <Button onClick={() => refetch()} variant="outline" className="gap-2">
               <RefreshCw className="h-4 w-4" /> Coba Lagi
@@ -235,42 +282,70 @@ function AdminRekapBulan1Page() {
     );
   }
 
-  // Chart data preparation
-  const distributionPieData = [
-    { name: "Peserta Aktif", value: rekapData.pesertaAktif, color: PIE_COLORS.aktif },
-    { name: "Peserta Tidak Aktif", value: rekapData.pesertaTidakAktif, color: PIE_COLORS.tidakAktif },
+  // Chart data: 5 Segmen Keaktifan (Donut)
+  const tierPieData = [
+    {
+      name: "Sangat Aktif (16—20+)",
+      value: rekapData.counts.sangatAktif,
+      color: TIER_CONFIG.sangatAktif.color,
+    },
+    {
+      name: "Aktif (11—15)",
+      value: rekapData.counts.aktif,
+      color: TIER_CONFIG.aktif.color,
+    },
+    {
+      name: "Cukup Aktif (6—10)",
+      value: rekapData.counts.cukupAktif,
+      color: TIER_CONFIG.cukupAktif.color,
+    },
+    {
+      name: "Kurang Aktif (1—5)",
+      value: rekapData.counts.kurangAktif,
+      color: TIER_CONFIG.kurangAktif.color,
+    },
+    {
+      name: "Tidak Aktif (0 Poin)",
+      value: rekapData.counts.tidakAktif,
+      color: TIER_CONFIG.tidakAktif.color,
+    },
   ];
 
+  // Chart data: Peserta per Kelompok (Stacked Bar)
+  const groupStackedData = rekapData.groupSummaries.map((g) => ({
+    name: g.group,
+    sangatAktif: g.sangatAktif,
+    aktif: g.aktif,
+    cukupAktif: g.cukupAktif,
+    kurangAktif: g.kurangAktif,
+    tidakAktif: g.tidakAktif,
+    rataRata: Math.round(g.rataRataPoinSeluruh * 10) / 10,
+    totalPoin: g.totalPoin,
+  }));
+
+  // Chart data: Pola Partisipasi
   const participationPieData = [
     {
-      name: "Aktif Daily & Challenge",
+      name: "Daily & Challenge",
       value: rekapData.polaPartisipasi.dailyAndChallenge,
-      color: PIE_COLORS.dailyChallenge,
+      color: PART_COLORS.dailyChallenge,
     },
     {
-      name: "Aktif Daily Saja",
+      name: "Daily Saja",
       value: rekapData.polaPartisipasi.dailyOnly,
-      color: PIE_COLORS.dailyOnly,
+      color: PART_COLORS.dailyOnly,
     },
     {
-      name: "Aktif Challenge Saja",
+      name: "Challenge Saja",
       value: rekapData.polaPartisipasi.challengeOnly,
-      color: PIE_COLORS.challengeOnly,
+      color: PART_COLORS.challengeOnly,
     },
     {
-      name: "Tidak Aktif Keduanya",
+      name: "Tidak Ada Keduanya (0)",
       value: rekapData.polaPartisipasi.neither,
-      color: PIE_COLORS.neither,
+      color: PART_COLORS.neither,
     },
   ];
-
-  const groupChartData = rekapData.groupSummaries.map((g) => ({
-    name: g.group,
-    aktif: g.pesertaAktif,
-    tidakAktif: g.pesertaTidakAktif,
-    persen: Math.round(g.persenKeaktifan * 10) / 10,
-    rataRata: Math.round(g.rataRataPoinSeluruh * 10) / 10,
-  }));
 
   const allGroups = ["all", ...rekapData.groupSummaries.map((g) => g.group)];
 
@@ -287,29 +362,16 @@ function AdminRekapBulan1Page() {
             <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-800">
               WELLNESS TURBO
             </h1>
-            <p className="text-sm md:text-base font-medium text-emerald-800/90 tracking-wide">
+            <p className="text-sm md:text-base font-semibold text-emerald-800/90 tracking-wide">
               DASHBOARD KEAKTIFAN PESERTA
             </p>
           </div>
 
-          {/* Right Action Bar */}
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2 bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-xl border border-slate-200 text-xs shadow-2xs">
-              <span className="text-slate-500 font-medium">Kriteria Aktif:</span>
-              <Select
-                value={String(threshold)}
-                onValueChange={(val) => setThreshold(Number(val))}
-              >
-                <SelectTrigger className="h-7 w-[160px] text-xs font-semibold border-none shadow-none focus:ring-0">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="5">Total Poin ≥ 5 (Default)</SelectItem>
-                  <SelectItem value="10">Total Poin ≥ 10 (Aktif)</SelectItem>
-                  <SelectItem value="1">Total Poin &gt; 0 (Ada Poin)</SelectItem>
-                  <SelectItem value="15">Total Poin &gt; 15 (Sangat Aktif)</SelectItem>
-                </SelectContent>
-              </Select>
+          {/* Right Action: Refresh button & Info Badge */}
+          <div className="flex items-center gap-3">
+            <div className="hidden sm:flex items-center gap-1.5 text-xs text-slate-600 bg-white/80 px-3.5 py-2 rounded-xl border border-slate-200 shadow-2xs">
+              <span className="font-semibold text-slate-700">Sumber Data:</span>
+              <span>POIN DAILY (Kolom G) + POIN CHALLENGE (Kolom D)</span>
             </div>
 
             <Button
@@ -317,16 +379,41 @@ function AdminRekapBulan1Page() {
               variant="outline"
               size="sm"
               disabled={isRefreshing}
-              className="gap-2 bg-white/90 border-slate-200 shadow-2xs text-xs font-semibold rounded-xl"
+              className="gap-2 bg-white/90 border-slate-200 shadow-2xs text-xs font-semibold rounded-xl hover:bg-slate-50"
             >
               <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
               Refresh Sheet
             </Button>
           </div>
         </div>
+
+        {/* Legend / Info Bar Kategori Keaktifan */}
+        <div className="mt-5 pt-4 border-t border-emerald-200/60 flex flex-wrap items-center gap-2 sm:gap-4 text-xs font-medium text-slate-700">
+          <span className="font-bold text-slate-800">Kriteria Keaktifan:</span>
+          <span className="inline-flex items-center gap-1.5 bg-white/70 px-2.5 py-1 rounded-lg border border-emerald-200 text-emerald-800">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-600" />
+            Sangat Aktif (16—20+)
+          </span>
+          <span className="inline-flex items-center gap-1.5 bg-white/70 px-2.5 py-1 rounded-lg border border-teal-200 text-teal-800">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+            Aktif (11—15)
+          </span>
+          <span className="inline-flex items-center gap-1.5 bg-white/70 px-2.5 py-1 rounded-lg border border-amber-200 text-amber-800">
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+            Cukup Aktif (6—10)
+          </span>
+          <span className="inline-flex items-center gap-1.5 bg-white/70 px-2.5 py-1 rounded-lg border border-orange-200 text-orange-800">
+            <span className="w-2.5 h-2.5 rounded-full bg-orange-500" />
+            Kurang Aktif (1—5)
+          </span>
+          <span className="inline-flex items-center gap-1.5 bg-white/70 px-2.5 py-1 rounded-lg border border-rose-200 text-rose-800">
+            <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
+            Tidak Aktif (0 Poin)
+          </span>
+        </div>
       </div>
 
-      {/* ===================== 6 METRIC CARDS ===================== */}
+      {/* ===================== 6 METRIC CARDS (SESUAI LOGIKA) ===================== */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5">
         {/* 1. Total Peserta */}
         <Card className="rounded-2xl border-slate-200 shadow-2xs hover:shadow-xs transition-shadow">
@@ -348,34 +435,100 @@ function AdminRekapBulan1Page() {
           </CardContent>
         </Card>
 
-        {/* 2. Peserta Aktif */}
-        <Card className="rounded-2xl border-emerald-200/80 bg-emerald-50/20 shadow-2xs hover:shadow-xs transition-shadow">
+        {/* 2. Sangat Aktif (16—20+) */}
+        <Card className="rounded-2xl border-emerald-300 bg-emerald-50/30 shadow-2xs hover:shadow-xs transition-shadow">
           <CardContent className="p-4 flex flex-col justify-between h-full">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700">
-                Peserta Aktif
+              <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-800">
+                Sangat Aktif
               </span>
               <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center">
-                <CheckCircle2 className="h-4 w-4" />
+                <Sparkles className="h-4 w-4" />
               </div>
             </div>
             <div className="mt-2">
               <div className="text-2xl font-black text-emerald-700">
-                {rekapData.pesertaAktif}
+                {rekapData.counts.sangatAktif}
               </div>
-              <p className="text-[11px] text-emerald-600/90 mt-0.5">
-                Total poin ≥ {threshold}
+              <p className="text-[11px] text-emerald-600 font-medium mt-0.5">
+                {rekapData.percentages.sangatAktif.toFixed(1).replace(".", ",")}% • 16—20+ Poin
               </p>
             </div>
           </CardContent>
         </Card>
 
-        {/* 3. Peserta Tidak Aktif */}
-        <Card className="rounded-2xl border-rose-200/80 bg-rose-50/20 shadow-2xs hover:shadow-xs transition-shadow">
+        {/* 3. Aktif (11—15) */}
+        <Card className="rounded-2xl border-teal-300 bg-teal-50/30 shadow-2xs hover:shadow-xs transition-shadow">
           <CardContent className="p-4 flex flex-col justify-between h-full">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-rose-700">
-                Peserta Tidak Aktif
+              <span className="text-[11px] font-bold uppercase tracking-wider text-teal-800">
+                Aktif
+              </span>
+              <div className="w-8 h-8 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center">
+                <CheckCircle2 className="h-4 w-4" />
+              </div>
+            </div>
+            <div className="mt-2">
+              <div className="text-2xl font-black text-teal-700">
+                {rekapData.counts.aktif}
+              </div>
+              <p className="text-[11px] text-teal-600 font-medium mt-0.5">
+                {rekapData.percentages.aktif.toFixed(1).replace(".", ",")}% • 11—15 Poin
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 4. Cukup Aktif (6—10) */}
+        <Card className="rounded-2xl border-amber-300 bg-amber-50/30 shadow-2xs hover:shadow-xs transition-shadow">
+          <CardContent className="p-4 flex flex-col justify-between h-full">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-amber-800">
+                Cukup Aktif
+              </span>
+              <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center">
+                <Star className="h-4 w-4" />
+              </div>
+            </div>
+            <div className="mt-2">
+              <div className="text-2xl font-black text-amber-700">
+                {rekapData.counts.cukupAktif}
+              </div>
+              <p className="text-[11px] text-amber-600 font-medium mt-0.5">
+                {rekapData.percentages.cukupAktif.toFixed(1).replace(".", ",")}% • 6—10 Poin
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 5. Kurang Aktif (1—5) */}
+        <Card className="rounded-2xl border-orange-300 bg-orange-50/30 shadow-2xs hover:shadow-xs transition-shadow">
+          <CardContent className="p-4 flex flex-col justify-between h-full">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-orange-800">
+                Kurang Aktif
+              </span>
+              <div className="w-8 h-8 rounded-full bg-orange-100 text-orange-700 flex items-center justify-center">
+                <Flame className="h-4 w-4" />
+              </div>
+            </div>
+            <div className="mt-2">
+              <div className="text-2xl font-black text-orange-700">
+                {rekapData.counts.kurangAktif}
+              </div>
+              <p className="text-[11px] text-orange-600 font-medium mt-0.5">
+                {rekapData.percentages.kurangAktif.toFixed(1).replace(".", ",")}% • 1—5 Poin
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 6. Tidak Aktif (0 Poin) */}
+        <Card className="rounded-2xl border-rose-300 bg-rose-50/30 shadow-2xs hover:shadow-xs transition-shadow">
+          <CardContent className="p-4 flex flex-col justify-between h-full">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-rose-800">
+                Tidak Aktif
               </span>
               <div className="w-8 h-8 rounded-full bg-rose-100 text-rose-700 flex items-center justify-center">
                 <XCircle className="h-4 w-4" />
@@ -383,103 +536,39 @@ function AdminRekapBulan1Page() {
             </div>
             <div className="mt-2">
               <div className="text-2xl font-black text-rose-600">
-                {rekapData.pesertaTidakAktif}
+                {rekapData.counts.tidakAktif}
               </div>
-              <p className="text-[11px] text-rose-500 mt-0.5">
-                Total poin &lt; {threshold}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* 4. Persentase Keaktifan */}
-        <Card className="rounded-2xl border-amber-200/80 bg-amber-50/20 shadow-2xs hover:shadow-xs transition-shadow">
-          <CardContent className="p-4 flex flex-col justify-between h-full">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-amber-700">
-                % Keaktifan
-              </span>
-              <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center font-bold text-xs">
-                %
-              </div>
-            </div>
-            <div className="mt-2">
-              <div className="text-2xl font-black text-amber-700">
-                {rekapData.persenKeaktifan.toFixed(1).replace(".", ",")}%
-              </div>
-              <p className="text-[11px] text-amber-600/90 mt-0.5">Aktif dari total peserta</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* 5. Rata-rata Poin Seluruh */}
-        <Card className="rounded-2xl border-slate-200 shadow-2xs hover:shadow-xs transition-shadow">
-          <CardContent className="p-4 flex flex-col justify-between h-full">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                Rata-Rata Seluruh
-              </span>
-              <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center">
-                <Flame className="h-4 w-4" />
-              </div>
-            </div>
-            <div className="mt-2">
-              <div className="text-2xl font-black text-slate-800">
-                {rekapData.rataRataPoinSeluruh.toFixed(1).replace(".", ",")}
-              </div>
-              <p className="text-[11px] text-slate-500 mt-0.5">
-                Dari total {rekapData.totalPeserta} peserta
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* 6. Rata-rata Poin Peserta Aktif */}
-        <Card className="rounded-2xl border-indigo-200/80 bg-indigo-50/20 shadow-2xs hover:shadow-xs transition-shadow">
-          <CardContent className="p-4 flex flex-col justify-between h-full">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-700">
-                Rata-Rata Aktif
-              </span>
-              <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center">
-                <Star className="h-4 w-4" />
-              </div>
-            </div>
-            <div className="mt-2">
-              <div className="text-2xl font-black text-indigo-700">
-                {rekapData.rataRataPoinAktif.toFixed(1).replace(".", ",")}
-              </div>
-              <p className="text-[11px] text-indigo-600/90 mt-0.5">
-                Dari {rekapData.pesertaAktif} peserta aktif
+              <p className="text-[11px] text-rose-500 font-medium mt-0.5">
+                {rekapData.percentages.tidakAktif.toFixed(1).replace(".", ",")}% • 0 Poin
               </p>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* ===================== GRAFIK ROW 1 (4 VISUALS) ===================== */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        {/* Visual 1: Distribusi Keaktifan Peserta (Donut) */}
-        <Card className="rounded-2xl border-slate-200 shadow-2xs flex flex-col">
+      {/* ===================== GRAFIK ROW ===================== */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        {/* Visual 1: Distribusi 5 Tingkat Keaktifan (Donut) - 4 cols */}
+        <Card className="rounded-2xl border-slate-200 shadow-2xs lg:col-span-4 flex flex-col">
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-600">
-              Distribusi Keaktifan Peserta
+              Distribusi 5 Tingkat Keaktifan
             </CardTitle>
           </CardHeader>
-          <CardContent className="flex-1 flex flex-col items-center justify-center min-h-[260px] relative">
+          <CardContent className="flex-1 flex flex-col items-center justify-center min-h-[280px] relative">
             {mounted ? (
-              <ResponsiveContainer width="100%" height={200}>
+              <ResponsiveContainer width="100%" height={210}>
                 <PieChart>
                   <Pie
-                    data={distributionPieData}
+                    data={tierPieData}
                     cx="50%"
                     cy="50%"
                     innerRadius={55}
                     outerRadius={80}
-                    paddingAngle={3}
+                    paddingAngle={2}
                     dataKey="value"
                   >
-                    {distributionPieData.map((entry, index) => (
+                    {tierPieData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
@@ -492,46 +581,56 @@ function AdminRekapBulan1Page() {
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-[200px] flex items-center justify-center text-slate-400 text-xs">
+              <div className="h-[210px] flex items-center justify-center text-slate-400 text-xs">
                 Memuat grafik...
               </div>
             )}
-            {/* Center Count */}
-            <div className="absolute top-[38%] left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
-              <div className="text-lg font-black text-slate-800">{rekapData.totalPeserta}</div>
+            <div className="absolute top-[37%] left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
+              <div className="text-xl font-black text-slate-800">{rekapData.totalPeserta}</div>
               <div className="text-[10px] text-slate-500 font-medium">Peserta</div>
             </div>
-            {/* Legend */}
-            <div className="flex items-center justify-center gap-4 mt-2 text-xs">
+
+            {/* Compact Legend */}
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-1 text-[11px]">
               <div className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-full bg-emerald-500" />
-                <span className="text-slate-600 text-[11px]">
-                  Aktif ({rekapData.persenKeaktifan.toFixed(1)}%)
-                </span>
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-600" />
+                <span className="text-slate-600">Sangat Aktif ({rekapData.counts.sangatAktif})</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-full bg-rose-500" />
-                <span className="text-slate-600 text-[11px]">
-                  Tidak Aktif ({(100 - rekapData.persenKeaktifan).toFixed(1)}%)
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                <span className="text-slate-600">Aktif ({rekapData.counts.aktif})</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+                <span className="text-slate-600">Cukup Aktif ({rekapData.counts.cukupAktif})</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-orange-500" />
+                <span className="text-slate-600">Kurang Aktif ({rekapData.counts.kurangAktif})</span>
+              </div>
+              <div className="flex items-center gap-1.5 col-span-2 justify-center pt-0.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
+                <span className="text-slate-600 font-semibold text-rose-700">
+                  Tidak Aktif ({rekapData.counts.tidakAktif})
                 </span>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Visual 2: Jumlah Aktif & Tidak Aktif per Kelompok (Stacked Bar) */}
-        <Card className="rounded-2xl border-slate-200 shadow-2xs lg:col-span-1 flex flex-col">
+        {/* Visual 2: Peserta per Kelompok (Stacked Bar) - 5 cols */}
+        <Card className="rounded-2xl border-slate-200 shadow-2xs lg:col-span-5 flex flex-col">
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-600">
-              Peserta Aktif & Tidak Aktif per Kelompok
+              Sebaran Keaktifan per Kelompok (Underweight & Nover 1..10)
             </CardTitle>
           </CardHeader>
-          <CardContent className="flex-1 min-h-[260px] pt-2">
+          <CardContent className="flex-1 min-h-[280px] pt-2">
             {mounted ? (
-              <ResponsiveContainer width="100%" height={230}>
+              <ResponsiveContainer width="100%" height={240}>
                 <BarChart
-                  data={groupChartData}
-                  margin={{ top: 10, right: 10, left: -20, bottom: 20 }}
+                  data={groupStackedData}
+                  margin={{ top: 10, right: 10, left: -20, bottom: 25 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                   <XAxis
@@ -546,117 +645,138 @@ function AdminRekapBulan1Page() {
                   <Legend
                     verticalAlign="top"
                     align="right"
-                    wrapperStyle={{ fontSize: "11px", paddingBottom: "6px" }}
+                    wrapperStyle={{ fontSize: "10px", paddingBottom: "6px" }}
                   />
-                  <Bar dataKey="aktif" name="Aktif" stackId="a" fill={PIE_COLORS.aktif} radius={[0, 0, 0, 0]} />
+                  <Bar
+                    dataKey="sangatAktif"
+                    name="Sangat Aktif"
+                    stackId="a"
+                    fill={TIER_CONFIG.sangatAktif.color}
+                  />
+                  <Bar
+                    dataKey="aktif"
+                    name="Aktif"
+                    stackId="a"
+                    fill={TIER_CONFIG.aktif.color}
+                  />
+                  <Bar
+                    dataKey="cukupAktif"
+                    name="Cukup"
+                    stackId="a"
+                    fill={TIER_CONFIG.cukupAktif.color}
+                  />
+                  <Bar
+                    dataKey="kurangAktif"
+                    name="Kurang"
+                    stackId="a"
+                    fill={TIER_CONFIG.kurangAktif.color}
+                  />
                   <Bar
                     dataKey="tidakAktif"
                     name="Tidak Aktif"
                     stackId="a"
-                    fill={PIE_COLORS.tidakAktif}
+                    fill={TIER_CONFIG.tidakAktif.color}
                     radius={[3, 3, 0, 0]}
                   />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-[230px] flex items-center justify-center text-slate-400 text-xs">
+              <div className="h-[240px] flex items-center justify-center text-slate-400 text-xs">
                 Memuat grafik...
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Visual 3: Persentase Keaktifan per Kelompok (Horizontal Bar) */}
-        <Card className="rounded-2xl border-slate-200 shadow-2xs flex flex-col">
+        {/* Visual 3: Pola Partisipasi Peserta - 3 cols */}
+        <Card className="rounded-2xl border-slate-200 shadow-2xs lg:col-span-3 flex flex-col">
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-600">
-              Persentase Keaktifan per Kelompok (%)
+              Pola Partisipasi
             </CardTitle>
           </CardHeader>
-          <CardContent className="flex-1 min-h-[260px] pt-2">
-            {mounted ? (
-              <ResponsiveContainer width="100%" height={230}>
-                <BarChart
-                  layout="vertical"
-                  data={groupChartData}
-                  margin={{ top: 5, right: 25, left: 10, bottom: 5 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E2E8F0" />
-                  <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10, fill: "#64748B" }} />
-                  <YAxis
-                    dataKey="name"
-                    type="category"
-                    tick={{ fontSize: 9, fill: "#64748B" }}
-                    width={68}
-                  />
-                  <Tooltip formatter={(val: number) => [`${val}%`, "Keaktifan"]} />
-                  <Bar
-                    dataKey="persen"
-                    name="% Keaktifan"
-                    fill="#10B981"
-                    radius={[0, 4, 4, 0]}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-[230px] flex items-center justify-center text-slate-400 text-xs">
-                Memuat grafik...
+          <CardContent className="flex-1 flex flex-col justify-between p-4">
+            <div className="h-36 relative">
+              {mounted ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={participationPieData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={36}
+                      outerRadius={56}
+                      paddingAngle={2}
+                      dataKey="value"
+                    >
+                      {participationPieData.map((entry, index) => (
+                        <Cell key={`part-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : null}
+              <div className="absolute top-[48%] left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
+                <div className="text-sm font-black text-slate-800">
+                  {rekapData.totalPeserta}
+                </div>
               </div>
-            )}
-          </CardContent>
-        </Card>
+            </div>
 
-        {/* Visual 4: Rata-rata Poin per Kelompok (Horizontal Bar) */}
-        <Card className="rounded-2xl border-slate-200 shadow-2xs flex flex-col">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-600">
-              Rata-rata Poin per Kelompok
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="flex-1 min-h-[260px] pt-2">
-            {mounted ? (
-              <ResponsiveContainer width="100%" height={230}>
-                <BarChart
-                  layout="vertical"
-                  data={groupChartData}
-                  margin={{ top: 5, right: 25, left: 10, bottom: 5 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E2E8F0" />
-                  <XAxis type="number" tick={{ fontSize: 10, fill: "#64748B" }} />
-                  <YAxis
-                    dataKey="name"
-                    type="category"
-                    tick={{ fontSize: 9, fill: "#64748B" }}
-                    width={68}
-                  />
-                  <Tooltip formatter={(val: number) => [`${val} poin`, "Rata-rata"]} />
-                  <Bar
-                    dataKey="rataRata"
-                    name="Rata-rata Poin"
-                    fill="#38BDF8"
-                    radius={[0, 4, 4, 0]}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-[230px] flex items-center justify-center text-slate-400 text-xs">
-                Memuat grafik...
+            <div className="space-y-1.5 text-[11px] pt-2 border-t border-slate-100">
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-1.5 text-slate-600">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" /> Daily & Challenge
+                </span>
+                <span className="font-bold text-slate-800">
+                  {rekapData.polaPartisipasi.dailyAndChallenge}
+                </span>
               </div>
-            )}
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-1.5 text-slate-600">
+                  <span className="w-2 h-2 rounded-full bg-sky-500" /> Daily Saja
+                </span>
+                <span className="font-bold text-slate-800">
+                  {rekapData.polaPartisipasi.dailyOnly}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-1.5 text-slate-600">
+                  <span className="w-2 h-2 rounded-full bg-amber-500" /> Challenge Saja
+                </span>
+                <span className="font-bold text-slate-800">
+                  {rekapData.polaPartisipasi.challengeOnly}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-1.5 text-slate-600">
+                  <span className="w-2 h-2 rounded-full bg-rose-500" /> Nol Keduanya
+                </span>
+                <span className="font-bold text-slate-800">
+                  {rekapData.polaPartisipasi.neither}
+                </span>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* ===================== SECTION 2: TABLE REKAP & PARTICIPATION ===================== */}
+      {/* ===================== SECTION 2: TABLE REKAP PER KELOMPOK ===================== */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        {/* Left: Tabel Rekap Keaktifan dan Rata-rata Poin per Kelompok (7 cols) */}
-        <div className="lg:col-span-7">
+        {/* Left: Tabel Rekap Per Kelompok (8 cols) */}
+        <div className="lg:col-span-8">
           <Card className="rounded-2xl border-slate-200 shadow-2xs overflow-hidden">
             <CardHeader className="bg-slate-50/70 border-b border-slate-100 py-3.5 px-5">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-bold text-slate-800">
-                  Rekap Keaktifan dan Rata-rata Poin per Kelompok
-                </CardTitle>
+                <div>
+                  <CardTitle className="text-sm font-bold text-slate-800">
+                    Rekap Keaktifan per Kelompok (Sheet UNDERWEIGHT & NOVER 1..10)
+                  </CardTitle>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Data dipetakan langsung dari masing-masing tab kelompok di Spreadsheet
+                  </p>
+                </div>
                 <Badge variant="outline" className="bg-white text-xs font-semibold text-slate-600">
                   {rekapData.groupSummaries.length} Kelompok
                 </Badge>
@@ -668,12 +788,13 @@ function AdminRekapBulan1Page() {
                   <TableRow className="bg-sky-50/50 hover:bg-sky-50/50 text-[11px]">
                     <TableHead className="font-bold text-slate-700">Kelompok</TableHead>
                     <TableHead className="text-center font-bold text-slate-700">Total</TableHead>
+                    <TableHead className="text-center font-bold text-emerald-800">Sangat Aktif</TableHead>
                     <TableHead className="text-center font-bold text-emerald-700">Aktif</TableHead>
+                    <TableHead className="text-center font-bold text-amber-700">Cukup</TableHead>
+                    <TableHead className="text-center font-bold text-orange-700">Kurang</TableHead>
                     <TableHead className="text-center font-bold text-rose-700">Tdk Aktif</TableHead>
-                    <TableHead className="text-center font-bold text-slate-700">% Aktif</TableHead>
                     <TableHead className="text-right font-bold text-slate-700">Total Poin</TableHead>
-                    <TableHead className="text-right font-bold text-slate-700">Rerata Smua</TableHead>
-                    <TableHead className="text-right font-bold text-indigo-700">Rerata Aktif</TableHead>
+                    <TableHead className="text-right font-bold text-indigo-700">Rerata Poin</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody className="text-xs">
@@ -683,32 +804,26 @@ function AdminRekapBulan1Page() {
                       <TableCell className="text-center font-medium text-slate-600">
                         {g.totalPeserta}
                       </TableCell>
-                      <TableCell className="text-center font-semibold text-emerald-600">
-                        {g.pesertaAktif}
+                      <TableCell className="text-center font-semibold text-emerald-700">
+                        {g.sangatAktif > 0 ? g.sangatAktif : "-"}
+                      </TableCell>
+                      <TableCell className="text-center font-semibold text-teal-700">
+                        {g.aktif > 0 ? g.aktif : "-"}
+                      </TableCell>
+                      <TableCell className="text-center font-semibold text-amber-700">
+                        {g.cukupAktif > 0 ? g.cukupAktif : "-"}
+                      </TableCell>
+                      <TableCell className="text-center font-semibold text-orange-700">
+                        {g.kurangAktif > 0 ? g.kurangAktif : "-"}
                       </TableCell>
                       <TableCell className="text-center font-semibold text-rose-600">
-                        {g.pesertaTidakAktif}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Badge
-                          variant="outline"
-                          className={
-                            g.persenKeaktifan >= 50
-                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                              : "bg-amber-50 text-amber-700 border-amber-200"
-                          }
-                        >
-                          {g.persenKeaktifan.toFixed(1).replace(".", ",")}%
-                        </Badge>
+                        {g.tidakAktif > 0 ? g.tidakAktif : "-"}
                       </TableCell>
                       <TableCell className="text-right font-bold text-slate-800">
                         {g.totalPoin}
                       </TableCell>
-                      <TableCell className="text-right text-slate-600">
-                        {g.rataRataPoinSeluruh.toFixed(1).replace(".", ",")}
-                      </TableCell>
                       <TableCell className="text-right font-semibold text-indigo-600">
-                        {g.rataRataPoinAktif.toFixed(1).replace(".", ",")}
+                        {g.rataRataPoinSeluruh.toFixed(1).replace(".", ",")}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -718,23 +833,26 @@ function AdminRekapBulan1Page() {
                     <TableCell className="text-center font-black text-slate-900">
                       {rekapData.totalPeserta}
                     </TableCell>
-                    <TableCell className="text-center font-black text-emerald-700">
-                      {rekapData.pesertaAktif}
+                    <TableCell className="text-center font-black text-emerald-800">
+                      {rekapData.counts.sangatAktif}
                     </TableCell>
-                    <TableCell className="text-center font-black text-rose-700">
-                      {rekapData.pesertaTidakAktif}
+                    <TableCell className="text-center font-black text-teal-800">
+                      {rekapData.counts.aktif}
                     </TableCell>
                     <TableCell className="text-center font-black text-amber-800">
-                      {rekapData.persenKeaktifan.toFixed(1).replace(".", ",")}%
+                      {rekapData.counts.cukupAktif}
+                    </TableCell>
+                    <TableCell className="text-center font-black text-orange-800">
+                      {rekapData.counts.kurangAktif}
+                    </TableCell>
+                    <TableCell className="text-center font-black text-rose-700">
+                      {rekapData.counts.tidakAktif}
                     </TableCell>
                     <TableCell className="text-right font-black text-slate-900">
                       {rekapData.totalPoinSemua}
                     </TableCell>
-                    <TableCell className="text-right font-black text-slate-900">
-                      {rekapData.rataRataPoinSeluruh.toFixed(1).replace(".", ",")}
-                    </TableCell>
                     <TableCell className="text-right font-black text-indigo-800">
-                      {rekapData.rataRataPoinAktif.toFixed(1).replace(".", ",")}
+                      {rekapData.rataRataPoinSeluruh.toFixed(1).replace(".", ",")}
                     </TableCell>
                   </TableRow>
                 </TableBody>
@@ -743,188 +861,59 @@ function AdminRekapBulan1Page() {
           </Card>
         </div>
 
-        {/* Right: Pola Partisipasi & Highlight Cards (5 cols) */}
-        <div className="lg:col-span-5 space-y-4">
-          {/* Pola Partisipasi Donut */}
-          <Card className="rounded-2xl border-slate-200 shadow-2xs">
-            <CardHeader className="py-3 px-5 border-b border-slate-100 bg-slate-50/50">
-              <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-600">
-                Pola Partisipasi Peserta
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4">
-              <div className="flex flex-col sm:flex-row items-center gap-4">
-                <div className="w-40 h-40 shrink-0 relative">
-                  {mounted ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={participationPieData}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={40}
-                          outerRadius={65}
-                          paddingAngle={2}
-                          dataKey="value"
-                        >
-                          {participationPieData.map((entry, index) => (
-                            <Cell key={`part-${index}`} fill={entry.color} />
-                          ))}
-                        </Pie>
-                        <Tooltip />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="h-full flex items-center justify-center text-slate-400 text-xs">
-                      ...
-                    </div>
-                  )}
-                  <div className="absolute top-[48%] left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
-                    <div className="text-base font-black text-slate-800">
-                      {rekapData.totalPeserta}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-2 text-xs flex-1 w-full">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                      <span className="text-slate-600">Daily & Challenge</span>
-                    </div>
-                    <span className="font-bold text-slate-800">
-                      {rekapData.polaPartisipasi.dailyAndChallenge} (
-                      {(
-                        (rekapData.polaPartisipasi.dailyAndChallenge / rekapData.totalPeserta) *
-                        100
-                      ).toFixed(0)}
-                      %)
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-sky-500" />
-                      <span className="text-slate-600">Daily Saja</span>
-                    </div>
-                    <span className="font-bold text-slate-800">
-                      {rekapData.polaPartisipasi.dailyOnly} (
-                      {((rekapData.polaPartisipasi.dailyOnly / rekapData.totalPeserta) * 100).toFixed(
-                        0
-                      )}
-                      %)
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-                      <span className="text-slate-600">Challenge Saja</span>
-                    </div>
-                    <span className="font-bold text-slate-800">
-                      {rekapData.polaPartisipasi.challengeOnly} (
-                      {(
-                        (rekapData.polaPartisipasi.challengeOnly / rekapData.totalPeserta) *
-                        100
-                      ).toFixed(0)}
-                      %)
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
-                      <span className="text-slate-600">Tidak Aktif Keduanya</span>
-                    </div>
-                    <span className="font-bold text-slate-800">
-                      {rekapData.polaPartisipasi.neither} (
-                      {((rekapData.polaPartisipasi.neither / rekapData.totalPeserta) * 100).toFixed(
-                        0
-                      )}
-                      %)
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
+        {/* Right: 3 Highlight Cards (4 cols) */}
+        <div className="lg:col-span-4 space-y-3.5">
+          {/* Card 1: Kelompok Paling Aktif */}
+          <Card className="rounded-2xl border-emerald-200 bg-gradient-to-br from-emerald-50/60 to-white p-4 shadow-2xs">
+            <div className="flex items-center gap-2 text-emerald-800 text-xs font-bold">
+              <Trophy className="h-4 w-4 text-emerald-600" />
+              Kelompok Partisipasi Tertinggi
+            </div>
+            <div className="mt-2 text-base font-black text-slate-800">
+              {rekapData.kelompokPalingAktif?.name || "-"}
+            </div>
+            <div className="text-2xl font-black text-emerald-700 mt-1">
+              {rekapData.kelompokPalingAktif?.pct.toFixed(1).replace(".", ",")}%
+            </div>
+            <div className="text-xs text-slate-500 mt-0.5">
+              Peserta memiliki poin kegiatan Bulan 1
+            </div>
           </Card>
 
-          {/* 4 Mini Highlight Cards */}
-          <div className="grid grid-cols-2 gap-3">
-            {/* Keaktifan Tertinggi */}
-            <Card className="rounded-xl border-emerald-100 bg-emerald-50/30 p-3 shadow-2xs">
-              <div className="flex items-center gap-2 text-emerald-800 text-[11px] font-bold">
-                <Trophy className="h-3.5 w-3.5 text-emerald-600" />
-                Keaktifan Tertinggi
-              </div>
-              <div className="mt-1 text-sm font-black text-slate-800">
-                {rekapData.kelompokTertinggiKeaktifan?.name || "-"}
-              </div>
-              <div className="text-lg font-black text-emerald-700">
-                {rekapData.kelompokTertinggiKeaktifan?.pct.toFixed(1).replace(".", ",")}%
-              </div>
-              <div className="text-[10px] text-slate-500">
-                {rekapData.kelompokTertinggiKeaktifan?.active} dari{" "}
-                {rekapData.kelompokTertinggiKeaktifan?.total} peserta
-              </div>
-            </Card>
+          {/* Card 2: Kelompok Rata-rata Poin Tertinggi */}
+          <Card className="rounded-2xl border-blue-200 bg-gradient-to-br from-blue-50/60 to-white p-4 shadow-2xs">
+            <div className="flex items-center gap-2 text-blue-800 text-xs font-bold">
+              <Star className="h-4 w-4 text-blue-600" />
+              Rata-rata Poin Tertinggi
+            </div>
+            <div className="mt-2 text-base font-black text-slate-800">
+              {rekapData.kelompokTertinggiPoin?.name || "-"}
+            </div>
+            <div className="text-2xl font-black text-blue-700 mt-1">
+              {rekapData.kelompokTertinggiPoin?.avg.toFixed(1).replace(".", ",")} poin
+            </div>
+            <div className="text-xs text-slate-500 mt-0.5">
+              Total terkumpul {rekapData.kelompokTertinggiPoin?.totalPoin} poin
+            </div>
+          </Card>
 
-            {/* Keaktifan Terendah */}
-            <Card className="rounded-xl border-rose-100 bg-rose-50/30 p-3 shadow-2xs">
-              <div className="flex items-center gap-2 text-rose-800 text-[11px] font-bold">
-                <TrendingDown className="h-3.5 w-3.5 text-rose-600" />
-                Keaktifan Terendah
-              </div>
-              <div className="mt-1 text-sm font-black text-slate-800">
-                {rekapData.kelompokTerendahKeaktifan?.name || "-"}
-              </div>
-              <div className="text-lg font-black text-rose-700">
-                {rekapData.kelompokTerendahKeaktifan?.pct.toFixed(1).replace(".", ",")}%
-              </div>
-              <div className="text-[10px] text-slate-500">
-                {rekapData.kelompokTerendahKeaktifan?.active} dari{" "}
-                {rekapData.kelompokTerendahKeaktifan?.total} peserta
-              </div>
-            </Card>
-
-            {/* Rata-rata Poin Tertinggi */}
-            <Card className="rounded-xl border-blue-100 bg-blue-50/30 p-3 shadow-2xs">
-              <div className="flex items-center gap-2 text-blue-800 text-[11px] font-bold">
-                <Star className="h-3.5 w-3.5 text-blue-600" />
-                Poin Tertinggi
-              </div>
-              <div className="mt-1 text-sm font-black text-slate-800">
-                {rekapData.kelompokTertinggiPoin?.name || "-"}
-              </div>
-              <div className="text-lg font-black text-blue-700">
-                {rekapData.kelompokTertinggiPoin?.avg.toFixed(1).replace(".", ",")} poin
-              </div>
-              <div className="text-[10px] text-slate-500">
-                Total {rekapData.kelompokTertinggiPoin?.totalPoin} poin
-              </div>
-            </Card>
-
-            {/* Rata-rata Poin Terendah */}
-            <Card className="rounded-xl border-slate-200 bg-slate-50/50 p-3 shadow-2xs">
-              <div className="flex items-center gap-2 text-slate-700 text-[11px] font-bold">
-                <TrendingDown className="h-3.5 w-3.5 text-slate-500" />
-                Poin Terendah
-              </div>
-              <div className="mt-1 text-sm font-black text-slate-800">
-                {rekapData.kelompokTerendahPoin?.name || "-"}
-              </div>
-              <div className="text-lg font-black text-slate-700">
-                {rekapData.kelompokTerendahPoin?.avg.toFixed(1).replace(".", ",")} poin
-              </div>
-              <div className="text-[10px] text-slate-500">
-                Total {rekapData.kelompokTerendahPoin?.totalPoin} poin
-              </div>
-            </Card>
-          </div>
+          {/* Card 3: Rata-rata Seluruh */}
+          <Card className="rounded-2xl border-slate-200 bg-slate-50/60 p-4 shadow-2xs">
+            <div className="flex items-center gap-2 text-slate-700 text-xs font-bold">
+              <Flame className="h-4 w-4 text-slate-600" />
+              Rata-rata Poin Seluruh Peserta
+            </div>
+            <div className="mt-2 text-2xl font-black text-slate-800">
+              {rekapData.rataRataPoinSeluruh.toFixed(1).replace(".", ",")} poin
+            </div>
+            <div className="text-xs text-slate-500 mt-0.5">
+              Akumulasi total {rekapData.totalPoinSemua} poin dari 203 peserta
+            </div>
+          </Card>
         </div>
       </div>
 
-      {/* ===================== SECTION 3: DAFTAR PESERTA ===================== */}
+      {/* ===================== SECTION 3: DAFTAR PESERTA & DETAIL ===================== */}
       <Card className="rounded-2xl border-slate-200 shadow-2xs overflow-hidden">
         <CardHeader className="p-5 border-b border-slate-100 space-y-4">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -933,7 +922,7 @@ function AdminRekapBulan1Page() {
                 Daftar Peserta & Rincian Poin Bulan 1
               </CardTitle>
               <p className="text-xs text-slate-500 mt-0.5">
-                Rincian keaktifan berdasarkan Sheet POIN DAILY (kolom G) dan POIN CHALLENGE (kolom D)
+                Poin Daily (Sheet POIN DAILY kolom G) + Poin Challenge (Sheet POIN CHALLENGE kolom D)
               </p>
             </div>
 
@@ -947,8 +936,8 @@ function AdminRekapBulan1Page() {
             </Button>
           </div>
 
-          {/* Tabs + Filter Controls */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+          {/* Tabs Berdasarkan 5 Kategori Keaktifan + Filter Controls */}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pt-1">
             <Tabs
               value={activeTab}
               onValueChange={(v) => {
@@ -956,15 +945,24 @@ function AdminRekapBulan1Page() {
                 setCurrentPage(1);
               }}
             >
-              <TabsList className="bg-slate-100 p-1 rounded-xl">
-                <TabsTrigger value="tidak_aktif" className="text-xs font-semibold rounded-lg">
-                  Peserta Tidak Aktif ({rekapData.pesertaTidakAktif})
-                </TabsTrigger>
-                <TabsTrigger value="aktif" className="text-xs font-semibold rounded-lg">
-                  Peserta Aktif ({rekapData.pesertaAktif})
-                </TabsTrigger>
+              <TabsList className="bg-slate-100 p-1 rounded-xl flex-wrap h-auto">
                 <TabsTrigger value="semua" className="text-xs font-semibold rounded-lg">
                   Semua ({rekapData.totalPeserta})
+                </TabsTrigger>
+                <TabsTrigger value="sangat_aktif" className="text-xs font-semibold rounded-lg text-emerald-800">
+                  Sangat Aktif ({rekapData.counts.sangatAktif})
+                </TabsTrigger>
+                <TabsTrigger value="aktif" className="text-xs font-semibold rounded-lg text-teal-800">
+                  Aktif ({rekapData.counts.aktif})
+                </TabsTrigger>
+                <TabsTrigger value="cukup_aktif" className="text-xs font-semibold rounded-lg text-amber-800">
+                  Cukup ({rekapData.counts.cukupAktif})
+                </TabsTrigger>
+                <TabsTrigger value="kurang_aktif" className="text-xs font-semibold rounded-lg text-orange-800">
+                  Kurang ({rekapData.counts.kurangAktif})
+                </TabsTrigger>
+                <TabsTrigger value="tidak_aktif" className="text-xs font-semibold rounded-lg text-rose-800">
+                  Tidak Aktif ({rekapData.counts.tidakAktif})
                 </TabsTrigger>
               </TabsList>
             </Tabs>
@@ -1022,7 +1020,7 @@ function AdminRekapBulan1Page() {
                 <TableHead className="text-center font-bold text-slate-700">Poin Daily</TableHead>
                 <TableHead className="text-center font-bold text-slate-700">Poin Challenge</TableHead>
                 <TableHead className="text-center font-bold text-slate-700">Total Poin</TableHead>
-                <TableHead className="text-center font-bold text-slate-700">Status</TableHead>
+                <TableHead className="text-center font-bold text-slate-700">Status Keaktifan</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody className="text-xs">
@@ -1033,52 +1031,51 @@ function AdminRekapBulan1Page() {
                   </TableCell>
                 </TableRow>
               ) : (
-                paginatedList.map((p, idx) => (
-                  <TableRow key={`${p.nopek}-${p.name}`} className="hover:bg-slate-50/70">
-                    <TableCell className="text-center text-slate-500 font-medium">
-                      {(currentPage - 1) * pageSize + idx + 1}
-                    </TableCell>
-                    <TableCell className="font-semibold text-slate-900">
-                      {p.name}
-                      {p.note && (
-                        <span className="ml-2 inline-block px-1.5 py-0.5 rounded text-[10px] bg-slate-200 text-slate-700">
-                          {p.note}
+                paginatedList.map((p, idx) => {
+                  const conf = TIER_CONFIG[p.activityTier];
+                  return (
+                    <TableRow key={`${p.nopek}-${p.name}`} className="hover:bg-slate-50/70">
+                      <TableCell className="text-center text-slate-500 font-medium">
+                        {(currentPage - 1) * pageSize + idx + 1}
+                      </TableCell>
+                      <TableCell className="font-semibold text-slate-900">
+                        {p.name}
+                        {p.note && (
+                          <span className="ml-2 inline-block px-1.5 py-0.5 rounded text-[10px] bg-slate-200 text-slate-700">
+                            {p.note}
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-slate-600 font-mono text-[11px]">
+                        {p.nopek || "-"}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="bg-white font-medium text-slate-700 text-[11px]">
+                          {p.group}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-slate-600 max-w-[180px] truncate" title={p.location}>
+                        {p.location || "-"}
+                      </TableCell>
+                      <TableCell className="text-center font-medium text-slate-700">
+                        {p.poinDaily}
+                      </TableCell>
+                      <TableCell className="text-center font-medium text-slate-700">
+                        {p.poinChallenge}
+                      </TableCell>
+                      <TableCell className="text-center font-black text-slate-900">
+                        {p.totalPoin}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${conf.bgBadge} ${conf.textBadge} ${conf.borderBadge}`}
+                        >
+                          {p.statusLabel}
                         </span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-slate-600 font-mono text-[11px]">
-                      {p.nopek || "-"}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="bg-white font-medium text-slate-700 text-[11px]">
-                        {p.group}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-slate-600 max-w-[180px] truncate" title={p.location}>
-                      {p.location || "-"}
-                    </TableCell>
-                    <TableCell className="text-center font-medium text-slate-700">
-                      {p.poinDaily}
-                    </TableCell>
-                    <TableCell className="text-center font-medium text-slate-700">
-                      {p.poinChallenge}
-                    </TableCell>
-                    <TableCell className="text-center font-black text-slate-900">
-                      {p.totalPoin}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${
-                          p.status === "Aktif"
-                            ? "bg-emerald-100 text-emerald-800"
-                            : "bg-rose-100 text-rose-800"
-                        }`}
-                      >
-                        {p.status}
-                      </span>
-                    </TableCell>
-                  </TableRow>
-                ))
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>
