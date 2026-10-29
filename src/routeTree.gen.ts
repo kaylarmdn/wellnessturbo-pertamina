@@ -26,6 +26,7 @@ import { Route as AdminLeaderboardRouteImport } from './routes/admin.leaderboard
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
 import { Route as AdminPembekalanRouteImport } from './routes/admin.pembekalan'
 import { Route as AdminPesertaRouteImport } from './routes/admin.peserta'
+import { Route as AdminRekapBulan1RouteImport } from './routes/admin.rekap-bulan-1'
 import { Route as AdminReportsRouteImport } from './routes/admin.reports'
 import { Route as AdminRewardRouteImport } from './routes/admin.reward'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
@@ -119,6 +120,11 @@ const AdminPesertaRoute = AdminPesertaRouteImport.update({
   path: '/peserta',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminRekapBulan1Route = AdminRekapBulan1RouteImport.update({
+  id: '/rekap-bulan-1',
+  path: '/rekap-bulan-1',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminReportsRoute = AdminReportsRouteImport.update({
   id: '/reports',
   path: '/reports',
@@ -172,6 +178,7 @@ export interface FileRoutesByFullPath {
   '/admin/login': typeof AdminLoginRoute
   '/admin/pembekalan': typeof AdminPembekalanRoute
   '/admin/peserta': typeof AdminPesertaRoute
+  '/admin/rekap-bulan-1': typeof AdminRekapBulan1Route
   '/admin/reports': typeof AdminReportsRoute
   '/admin/reward': typeof AdminRewardRoute
   '/admin/settings': typeof AdminSettingsRoute
@@ -197,6 +204,7 @@ export interface FileRoutesByTo {
   '/admin/login': typeof AdminLoginRoute
   '/admin/pembekalan': typeof AdminPembekalanRoute
   '/admin/peserta': typeof AdminPesertaRoute
+  '/admin/rekap-bulan-1': typeof AdminRekapBulan1Route
   '/admin/reports': typeof AdminReportsRoute
   '/admin/reward': typeof AdminRewardRoute
   '/admin/settings': typeof AdminSettingsRoute
@@ -224,6 +232,7 @@ export interface FileRoutesById {
   '/admin/login': typeof AdminLoginRoute
   '/admin/pembekalan': typeof AdminPembekalanRoute
   '/admin/peserta': typeof AdminPesertaRoute
+  '/admin/rekap-bulan-1': typeof AdminRekapBulan1Route
   '/admin/reports': typeof AdminReportsRoute
   '/admin/reward': typeof AdminRewardRoute
   '/admin/settings': typeof AdminSettingsRoute
@@ -252,6 +261,7 @@ export interface FileRouteTypes {
     | '/admin/login'
     | '/admin/pembekalan'
     | '/admin/peserta'
+    | '/admin/rekap-bulan-1'
     | '/admin/reports'
     | '/admin/reward'
     | '/admin/settings'
@@ -277,6 +287,7 @@ export interface FileRouteTypes {
     | '/admin/login'
     | '/admin/pembekalan'
     | '/admin/peserta'
+    | '/admin/rekap-bulan-1'
     | '/admin/reports'
     | '/admin/reward'
     | '/admin/settings'
@@ -303,6 +314,7 @@ export interface FileRouteTypes {
     | '/admin/login'
     | '/admin/pembekalan'
     | '/admin/peserta'
+    | '/admin/rekap-bulan-1'
     | '/admin/reports'
     | '/admin/reward'
     | '/admin/settings'
@@ -449,6 +461,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminPesertaRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/rekap-bulan-1': {
+      id: '/admin/rekap-bulan-1'
+      path: '/rekap-bulan-1'
+      fullPath: '/admin/rekap-bulan-1'
+      preLoaderRoute: typeof AdminRekapBulan1RouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/reports': {
       id: '/admin/reports'
       path: '/reports'
@@ -510,6 +529,7 @@ interface AdminRouteChildren {
   AdminLoginRoute: typeof AdminLoginRoute
   AdminPembekalanRoute: typeof AdminPembekalanRoute
   AdminPesertaRoute: typeof AdminPesertaRoute
+  AdminRekapBulan1Route: typeof AdminRekapBulan1Route
   AdminReportsRoute: typeof AdminReportsRoute
   AdminRewardRoute: typeof AdminRewardRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
@@ -525,6 +545,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminLoginRoute: AdminLoginRoute,
   AdminPembekalanRoute: AdminPembekalanRoute,
   AdminPesertaRoute: AdminPesertaRoute,
+  AdminRekapBulan1Route: AdminRekapBulan1Route,
   AdminReportsRoute: AdminReportsRoute,
   AdminRewardRoute: AdminRewardRoute,
   AdminSettingsRoute: AdminSettingsRoute,

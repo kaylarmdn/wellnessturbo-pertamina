@@ -33,6 +33,7 @@ export const Route = createFileRoute("/admin")({
 
 export const ADMIN_NAV = [
   { to: "/admin", label: "Dashboard Admin", icon: LayoutDashboard, exact: true },
+  { to: "/admin/rekap-bulan-1", label: "Rekap Bulan 1", icon: BarChart3 },
   { to: "/admin/reports", label: "📊 Laporan Pembekalan", icon: FileBarChart },
   { to: "/admin/pembekalan", label: "Kelola Pembekalan", icon: GraduationCap },
   { to: "/admin/peserta", label: "Data Peserta", icon: Users },
