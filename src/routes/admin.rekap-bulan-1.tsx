@@ -174,7 +174,7 @@ function AdminRekapBulan1Page() {
     isError,
     refetch,
   } = useQuery<OverallRekapStats>({
-    queryKey: ["rekap-bulan-1-v3-exact", sheetUrl],
+    queryKey: ["rekap-bulan-1-v5-clean", sheetUrl],
     queryFn: () => fetchRekapBulan1Data(sheetUrl, false),
   });
 
@@ -908,52 +908,35 @@ function AdminRekapBulan1Page() {
           </Card>
         </div>
 
-        {/* Right: 3 Highlight Cards (4 cols) */}
-        <div className="lg:col-span-4 space-y-3.5">
-          {/* Card 1: Kelompok Paling Aktif */}
-          <Card className="rounded-2xl border-emerald-200 bg-gradient-to-br from-emerald-50/60 to-white p-4 shadow-2xs">
-            <div className="flex items-center gap-2 text-emerald-800 text-xs font-bold">
-              <Trophy className="h-4 w-4 text-emerald-600" />
-              Kelompok Partisipasi Tertinggi
-            </div>
-            <div className="mt-2 text-base font-black text-slate-800">
-              {rekapData?.kelompokPalingAktif?.name || "-"}
-            </div>
-            <div className="text-2xl font-black text-emerald-700 mt-1">
-              {(rekapData?.kelompokPalingAktif?.pct || 0).toFixed(1).replace(".", ",")}%
-            </div>
-            <div className="text-xs text-slate-500 mt-0.5">
-              Peserta memiliki poin kegiatan Bulan 1
-            </div>
-          </Card>
-
-          {/* Card 2: Kelompok Rata-rata Poin Tertinggi */}
-          <Card className="rounded-2xl border-blue-200 bg-gradient-to-br from-blue-50/60 to-white p-4 shadow-2xs">
+        {/* Right: 2 Highlight Cards (4 cols) */}
+        <div className="lg:col-span-4 flex flex-col justify-between gap-4">
+          {/* Card 1: Kelompok Rata-rata Poin Tertinggi */}
+          <Card className="rounded-2xl border-blue-200 bg-gradient-to-br from-blue-50/60 to-white p-5 shadow-2xs flex-1 flex flex-col justify-center">
             <div className="flex items-center gap-2 text-blue-800 text-xs font-bold">
               <Star className="h-4 w-4 text-blue-600" />
-              Rata-rata Poin Tertinggi
+              Kelompok Rata-rata Poin Tertinggi
             </div>
-            <div className="mt-2 text-base font-black text-slate-800">
+            <div className="mt-2 text-lg font-black text-slate-800">
               {rekapData?.kelompokTertinggiPoin?.name || "-"}
             </div>
-            <div className="text-2xl font-black text-blue-700 mt-1">
+            <div className="text-3xl font-black text-blue-700 mt-1">
               {(rekapData?.kelompokTertinggiPoin?.avg || 0).toFixed(1).replace(".", ",")} poin
             </div>
-            <div className="text-xs text-slate-500 mt-0.5">
+            <div className="text-xs text-slate-500 mt-1">
               Total terkumpul {rekapData?.kelompokTertinggiPoin?.totalPoin || 0} poin
             </div>
           </Card>
 
-          {/* Card 3: Rata-rata Seluruh */}
-          <Card className="rounded-2xl border-slate-200 bg-slate-50/60 p-4 shadow-2xs">
+          {/* Card 2: Rata-rata Seluruh */}
+          <Card className="rounded-2xl border-slate-200 bg-slate-50/60 p-5 shadow-2xs flex-1 flex flex-col justify-center">
             <div className="flex items-center gap-2 text-slate-700 text-xs font-bold">
               <Flame className="h-4 w-4 text-slate-600" />
               Rata-rata Poin Seluruh Peserta
             </div>
-            <div className="mt-2 text-2xl font-black text-slate-800">
+            <div className="mt-2 text-3xl font-black text-slate-800">
               {rataRataPoinSeluruh.toFixed(1).replace(".", ",")} poin
             </div>
-            <div className="text-xs text-slate-500 mt-0.5">
+            <div className="text-xs text-slate-500 mt-1">
               Akumulasi total {totalPoinSemua} poin dari {totalPeserta} peserta
             </div>
           </Card>
@@ -1098,7 +1081,7 @@ function AdminRekapBulan1Page() {
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline" className="bg-white font-medium text-slate-700 text-[11px]">
-                          {p.group || "Lainnya"}
+                          {p.group}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-slate-600 max-w-[180px] truncate" title={p.location}>

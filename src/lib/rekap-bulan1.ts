@@ -83,7 +83,7 @@ export async function fetchRekapBulan1Data(
   sheetUrl: string,
   forceRefresh = false
 ): Promise<OverallRekapStats> {
-  const cacheKey = `rekap_bulan1_v3_exact_${sheetUrl}`;
+  const cacheKey = `rekap_bulan1_v5_clean_${sheetUrl}`;
 
   return fetchWithCache(
     cacheKey,
@@ -175,8 +175,13 @@ export async function fetchRekapBulan1Data(
         const group =
           nopekToGroup.get(nopek) ||
           nameToGroup.get(nameKey) ||
-          nameToGroup.get(nameClean) ||
-          "Lainnya";
+          nameToGroup.get(nameClean);
+
+        // Hanya sertakan peserta yang terdaftar resmi di 11 tab kelompok (Underweight & Nover 1..10)
+        // Baris tanpa kelompok (seperti data MUTASI atau testing) tidak dimasukkan
+        if (!group) {
+          continue;
+        }
 
         const pDaily = parseNumber(row[6]); // Kolom G = POIN BULAN 1
         const pChallenge =
@@ -261,7 +266,7 @@ export async function fetchRekapBulan1Data(
         (p) => p.participationPattern === "neither"
       ).length;
 
-      // Rekap Per Kelompok (Urutan: Underweight, Nover 1 s/d Nover 10, Lainnya)
+      // Rekap Per Kelompok (Urutan: Underweight, Nover 1 s/d Nover 10)
       const definedGroupsOrder = [
         "Underweight",
         "Nover 1",
@@ -274,7 +279,6 @@ export async function fetchRekapBulan1Data(
         "Nover 8",
         "Nover 9",
         "Nover 10",
-        "Lainnya",
       ];
 
       const groupsMap = new Map<string, ParticipantRekap[]>();
@@ -317,7 +321,7 @@ export async function fetchRekapBulan1Data(
 
       // Min/Max kelompok
       const validForMinMax = groupSummaries.filter(
-        (g) => g.group !== "Lainnya" && g.totalPeserta > 0
+        (g) => g.totalPeserta > 0
       );
 
       let kelompokTertinggiPoin = null;
