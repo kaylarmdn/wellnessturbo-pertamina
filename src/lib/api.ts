@@ -3373,11 +3373,16 @@ export function saveStoredContactPerson(cp: RewardContactPerson): void {
 
 /* ----------------------------- notifications ----------------------------- */
 
-const STORAGE_NOTIF_KEY = "wt_notifications_v1";
+const STORAGE_NOTIF_KEY = "wt_notifications_v2";
 
 export function getStoredNotifications(userId?: string): AppNotification[] {
   try {
-    const raw = localStorage.getItem(STORAGE_NOTIF_KEY);
+    if (typeof window !== "undefined") {
+      if (localStorage.getItem("wt_notifications_v1")) {
+        localStorage.removeItem("wt_notifications_v1");
+      }
+    }
+    const raw = typeof window !== "undefined" ? localStorage.getItem(STORAGE_NOTIF_KEY) : null;
     const list: AppNotification[] = raw ? JSON.parse(raw) : [];
     if (userId) {
       return list.filter((n) => !n.user_id || n.user_id === userId);
@@ -3385,6 +3390,23 @@ export function getStoredNotifications(userId?: string): AppNotification[] {
     return list;
   } catch {
     return [];
+  }
+}
+
+export function clearAllNotifications(userId?: string): void {
+  try {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("wt_notifications_v1");
+      if (!userId) {
+        localStorage.removeItem(STORAGE_NOTIF_KEY);
+      } else {
+        const current = getStoredNotifications();
+        const remaining = current.filter((n) => n.user_id && n.user_id !== userId);
+        localStorage.setItem(STORAGE_NOTIF_KEY, JSON.stringify(remaining));
+      }
+    }
+  } catch {
+    // ignore
   }
 }
 

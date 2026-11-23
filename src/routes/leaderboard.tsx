@@ -429,30 +429,7 @@ function LeaderboardPage() {
                     </td>
                   )}
                   <td className="px-5 py-3.5 text-right font-black text-indigo-600 text-base">
-                    <div>
-                      <span>{row.points}{mode === "group" ? "%" : " pts"}</span>
-                      {mode === "konsistensi" && (
-                        <div className="mt-1 flex justify-end">
-                          {row.points >= 60 ? (
-                            <Badge className="bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-black text-[10px] px-2 py-0.5 rounded-full border-none shadow-xs">
-                              👑 Voucher MAP 60 Pts (Full 3 Bulan)
-                            </Badge>
-                          ) : row.points >= 40 ? (
-                            <Badge className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-bold text-[10px] px-2 py-0.5 rounded-full border-none shadow-xs">
-                              🔥 Voucher MAP 40 Pts (Full 2 Bulan)
-                            </Badge>
-                          ) : row.points >= 20 ? (
-                            <Badge className="bg-gradient-to-r from-sky-600 to-indigo-600 text-white font-bold text-[10px] px-2 py-0.5 rounded-full border-none shadow-xs">
-                              ✨ Voucher MAP 20 Pts (Full 1 Bulan)
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="text-slate-400 text-[10px] px-2 py-0.5 rounded-full border-slate-200">
-                              Belum 20 Pts
-                            </Badge>
-                          )}
-                        </div>
-                      )}
-                    </div>
+                    <span>{row.points}{mode === "group" ? "%" : " pts"}</span>
                   </td>
                 </tr>
               );

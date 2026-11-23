@@ -8,6 +8,7 @@ import {
   Gift,
   HelpCircle,
   Sparkles,
+  Trash2,
   Video,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -20,8 +21,7 @@ import {
 } from "@/components/ui/popover";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import {
-  generateAutomatedNotifications,
-  getStoredClaims,
+  clearAllNotifications,
   getStoredNotifications,
   listEvents,
   markAllNotificationsAsRead,
@@ -38,22 +38,23 @@ export function NotificationPopover() {
   const events = useQuery({ queryKey: ["events"], queryFn: listEvents });
 
   const loadNotifications = () => {
-    const claims = getStoredClaims();
-    if (events.data) {
-      generateAutomatedNotifications(user, events.data ?? [], claims);
-    }
     const notifs = getStoredNotifications(user?.id);
     setNotifications(notifs);
   };
 
   useEffect(() => {
     loadNotifications();
-  }, [user?.id, events.data]);
+  }, [user?.id]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   const handleMarkAllRead = () => {
     markAllNotificationsAsRead(user?.id);
+    loadNotifications();
+  };
+
+  const handleClearAll = () => {
+    clearAllNotifications(user?.id);
     loadNotifications();
   };
 
@@ -122,17 +123,32 @@ export function NotificationPopover() {
             </div>
           </div>
 
-          {unreadCount > 0 && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={handleMarkAllRead}
-              className="h-7 rounded-full text-[11px] font-bold text-indigo-600 hover:bg-indigo-50 px-2.5"
-            >
-              <CheckCheck className="h-3.5 w-3.5 mr-1" /> Tandai Dibaca
-            </Button>
-          )}
+          <div className="flex items-center gap-1">
+            {unreadCount > 0 && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleMarkAllRead}
+                className="h-7 rounded-full text-[11px] font-bold text-indigo-600 hover:bg-indigo-50 px-2"
+                title="Tandai semua sudah dibaca"
+              >
+                <CheckCheck className="h-3.5 w-3.5 mr-1" /> Dibaca
+              </Button>
+            )}
+            {notifications.length > 0 && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleClearAll}
+                className="h-7 rounded-full text-[11px] font-bold text-rose-600 hover:bg-rose-50 px-2"
+                title="Hapus semua notifikasi"
+              >
+                <Trash2 className="h-3.5 w-3.5 mr-1" /> Hapus
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Notifications Scroll List */}
