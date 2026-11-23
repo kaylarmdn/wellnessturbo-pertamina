@@ -4083,7 +4083,6 @@ export function submitWorkerFeedback(input: {
           "Kategori": newFeedback.category,
           "Rating": newFeedback.rating,
           "Pesan/Feedback": newFeedback.message,
-          "Status": newFeedback.status,
         },
       }),
     });

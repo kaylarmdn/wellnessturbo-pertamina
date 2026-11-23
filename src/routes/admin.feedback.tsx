@@ -1,8 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import {
-  CheckCircle2,
-  Clock,
   Filter,
   Inbox,
   MessageSquare,
@@ -10,7 +8,6 @@ import {
   Search,
   Star,
   Trash2,
-  User,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -32,9 +29,8 @@ import {
   deleteWorkerFeedback,
   fetchFeedbacksFromSpreadsheet,
   getStoredFeedbacks,
-  updateFeedbackStatus,
 } from "@/lib/api";
-import type { FeedbackCategory, FeedbackStatus, WorkerFeedback } from "@/lib/types";
+import type { FeedbackCategory, WorkerFeedback } from "@/lib/types";
 
 export const Route = createFileRoute("/admin/feedback")({
   component: AdminFeedbackPage,
@@ -44,7 +40,6 @@ function AdminFeedbackPage() {
   const [feedbacks, setFeedbacks] = useState<WorkerFeedback[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
 
   const feedbacksQuery = useQuery({
     queryKey: ["admin_feedbacks"],
@@ -69,12 +64,6 @@ function AdminFeedbackPage() {
     feedbacksQuery.refetch();
   };
 
-  const handleStatusChange = (id: string, newStatus: FeedbackStatus) => {
-    updateFeedbackStatus(id, newStatus);
-    toast.success(`Status feedback berhasil diubah menjadi "${newStatus}"`);
-    loadFeedbacks();
-  };
-
   const handleDelete = (id: string, name: string) => {
     if (confirm(`Apakah Anda yakin ingin menghapus feedback dari ${name}?`)) {
       deleteWorkerFeedback(id);
@@ -89,20 +78,22 @@ function AdminFeedbackPage() {
       (fb.user_location || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
       fb.message.toLowerCase().includes(searchQuery.toLowerCase());
     const matchCategory = categoryFilter === "all" ? true : fb.category === categoryFilter;
-    const matchStatus = statusFilter === "all" ? true : fb.status === statusFilter;
-    return matchSearch && matchCategory && matchStatus;
+    return matchSearch && matchCategory;
   });
 
   const feedbackPagination = usePagination(filteredFeedbacks, 15);
 
   useEffect(() => {
     feedbackPagination.setCurrentPage(1);
-  }, [searchQuery, categoryFilter, statusFilter]);
+  }, [searchQuery, categoryFilter]);
 
   const totalCount = feedbacks.length;
-  const baruCount = feedbacks.filter((f) => f.status === "baru").length;
-  const dibacaCount = feedbacks.filter((f) => f.status === "dibaca").length;
-  const tuntasCount = feedbacks.filter((f) => f.status === "ditindaklanjuti").length;
+  const saranCount = feedbacks.filter((f) => f.category === "saran").length;
+  const apresiasiCount = feedbacks.filter((f) => f.category === "apresiasi").length;
+  const avgRating =
+    feedbacks.length > 0
+      ? (feedbacks.reduce((acc, curr) => acc + (curr.rating || 5), 0) / feedbacks.length).toFixed(1)
+      : "5.0";
 
   const getCategoryBadge = (category: FeedbackCategory | string) => {
     switch (category) {
@@ -112,17 +103,6 @@ function AdminFeedbackPage() {
         return <Badge className="bg-emerald-500/15 text-emerald-700 border border-emerald-300 font-bold text-xs">❤️ Apresiasi</Badge>;
       default:
         return <Badge className="bg-purple-500/15 text-purple-700 border border-purple-300 font-bold text-xs">💬 Lainnya</Badge>;
-    }
-  };
-
-  const getStatusBadge = (status: FeedbackStatus) => {
-    switch (status) {
-      case "baru":
-        return <Badge className="bg-amber-500/15 text-amber-800 border border-amber-300 font-bold text-xs animate-pulse">✨ Baru</Badge>;
-      case "dibaca":
-        return <Badge className="bg-sky-500/15 text-sky-800 border border-sky-300 font-bold text-xs">👁️ Dibaca</Badge>;
-      case "ditindaklanjuti":
-        return <Badge className="bg-emerald-500/15 text-emerald-800 border border-emerald-300 font-bold text-xs">✅ Ditindaklanjuti</Badge>;
     }
   };
 
@@ -161,17 +141,19 @@ function AdminFeedbackPage() {
           <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Total Feedback</p>
           <p className="text-2xl font-black text-indigo-700 mt-1">{totalCount} <span className="text-xs font-bold text-slate-500">pesan</span></p>
         </div>
-        <div className="rounded-2xl border border-amber-100 bg-gradient-to-br from-amber-50/60 to-white p-4 shadow-xs">
-          <p className="text-[11px] font-bold text-amber-600 uppercase tracking-wider">Baru Masuk</p>
-          <p className="text-2xl font-black text-amber-700 mt-1">{baruCount} <span className="text-xs font-bold text-slate-500">pesan</span></p>
-        </div>
         <div className="rounded-2xl border border-sky-100 bg-gradient-to-br from-sky-50/60 to-white p-4 shadow-xs">
-          <p className="text-[11px] font-bold text-sky-600 uppercase tracking-wider">Telah Dibaca</p>
-          <p className="text-2xl font-black text-sky-700 mt-1">{dibacaCount} <span className="text-xs font-bold text-slate-500">pesan</span></p>
+          <p className="text-[11px] font-bold text-sky-600 uppercase tracking-wider">Saran Program</p>
+          <p className="text-2xl font-black text-sky-700 mt-1">{saranCount} <span className="text-xs font-bold text-slate-500">masukan</span></p>
         </div>
-        <div className="rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50/60 to-white p-4 shadow-xs">
-          <p className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider">Ditindaklanjuti</p>
-          <p className="text-2xl font-black text-emerald-700 mt-1">{tuntasCount} <span className="text-xs font-bold text-slate-500">pesan</span></p>
+        <div className="rounded-2xl border border-rose-100 bg-gradient-to-br from-rose-50/60 to-white p-4 shadow-xs">
+          <p className="text-[11px] font-bold text-rose-600 uppercase tracking-wider">Apresiasi</p>
+          <p className="text-2xl font-black text-rose-700 mt-1">{apresiasiCount} <span className="text-xs font-bold text-slate-500">pesan</span></p>
+        </div>
+        <div className="rounded-2xl border border-amber-100 bg-gradient-to-br from-amber-50/60 to-white p-4 shadow-xs">
+          <p className="text-[11px] font-bold text-amber-600 uppercase tracking-wider">Rata-rata Rating</p>
+          <p className="text-2xl font-black text-amber-600 mt-1 flex items-center gap-1.5">
+            {avgRating} <Star className="h-5 w-5 fill-amber-400 text-amber-400" />
+          </p>
         </div>
       </div>
 
@@ -186,7 +168,7 @@ function AdminFeedbackPage() {
           </CardDescription>
 
           <div className="grid sm:grid-cols-3 gap-3 pt-3">
-            <div className="relative">
+            <div className="relative sm:col-span-2">
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
               <Input
                 placeholder="Cari nama, lokasi, atau isi pesan..."
@@ -207,18 +189,6 @@ function AdminFeedbackPage() {
                 <SelectItem value="lainnya">💬 Lainnya</SelectItem>
               </SelectContent>
             </Select>
-
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="rounded-2xl border-slate-200 text-xs font-semibold">
-                <SelectValue placeholder="Semua Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Semua Status</SelectItem>
-                <SelectItem value="baru">✨ Baru Masuk</SelectItem>
-                <SelectItem value="dibaca">👁️ Dibaca</SelectItem>
-                <SelectItem value="ditindaklanjuti">✅ Ditindaklanjuti</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
         </CardHeader>
 
@@ -231,14 +201,13 @@ function AdminFeedbackPage() {
                   <TableHead className="font-bold text-xs text-slate-700">Kategori & Rating</TableHead>
                   <TableHead className="font-bold text-xs text-slate-700">Isi Feedback / Masukan</TableHead>
                   <TableHead className="font-bold text-xs text-slate-700">Waktu Kirim</TableHead>
-                  <TableHead className="font-bold text-xs text-slate-700 text-center">Status</TableHead>
                   <TableHead className="font-bold text-xs text-slate-700 text-right">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredFeedbacks.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-xs text-slate-500 font-medium">
+                    <TableCell colSpan={5} className="text-center py-8 text-xs text-slate-500 font-medium">
                       <Inbox className="h-8 w-8 text-slate-300 mx-auto mb-2" />
                       Tidak ada feedback pekerja yang cocok dengan filter.
                     </TableCell>
@@ -282,22 +251,6 @@ function AdminFeedbackPage() {
                           dateStyle: "medium",
                           timeStyle: "short",
                         })}
-                      </TableCell>
-
-                      <TableCell className="text-center">
-                        <Select
-                          value={item.status}
-                          onValueChange={(v) => handleStatusChange(item.id, v as FeedbackStatus)}
-                        >
-                          <SelectTrigger className="w-[130px] mx-auto rounded-full text-xs font-bold border-slate-200">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="baru">✨ Baru</SelectItem>
-                            <SelectItem value="dibaca">👁️ Dibaca</SelectItem>
-                            <SelectItem value="ditindaklanjuti">✅ Ditindaklanjuti</SelectItem>
-                          </SelectContent>
-                        </Select>
                       </TableCell>
 
                       <TableCell className="text-right">
