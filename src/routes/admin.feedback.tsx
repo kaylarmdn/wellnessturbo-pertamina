@@ -1,3 +1,4 @@
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   CheckCircle2,
@@ -5,6 +6,7 @@ import {
   Filter,
   Inbox,
   MessageSquare,
+  RefreshCw,
   Search,
   Star,
   Trash2,
@@ -28,6 +30,7 @@ import {
 import { PaginationControl, usePagination } from "@/components/ui/pagination-control";
 import {
   deleteWorkerFeedback,
+  fetchFeedbacksFromSpreadsheet,
   getStoredFeedbacks,
   updateFeedbackStatus,
 } from "@/lib/api";
@@ -43,6 +46,11 @@ function AdminFeedbackPage() {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
+  const feedbacksQuery = useQuery({
+    queryKey: ["admin_feedbacks"],
+    queryFn: () => fetchFeedbacksFromSpreadsheet(),
+  });
+
   useEffect(() => {
     loadFeedbacks();
     const handleStorage = () => loadFeedbacks();
@@ -50,8 +58,15 @@ function AdminFeedbackPage() {
     return () => window.removeEventListener("storage", handleStorage);
   }, []);
 
+  useEffect(() => {
+    if (feedbacksQuery.data) {
+      setFeedbacks(feedbacksQuery.data);
+    }
+  }, [feedbacksQuery.data]);
+
   const loadFeedbacks = () => {
     setFeedbacks(getStoredFeedbacks());
+    feedbacksQuery.refetch();
   };
 
   const handleStatusChange = (id: string, newStatus: FeedbackStatus) => {
@@ -120,8 +135,23 @@ function AdminFeedbackPage() {
             <MessageSquare className="h-7 w-7 text-indigo-600" /> Rekap Feedback & Masukan Pekerja
           </h1>
           <p className="text-sm text-slate-600 font-medium mt-1">
-            Pantau masukan, saran, kendala, dan apresiasi yang dikirimkan pekerja langsung ke Medical Admin.
+            Pantau masukan, saran, kendala, dan apresiasi yang dikirimkan pekerja langsung ke Medical Admin & Sheet FEEDBACK.
           </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              feedbacksQuery.refetch();
+              toast.info("Memperbarui data feedback dari Google Sheets...");
+            }}
+            disabled={feedbacksQuery.isFetching}
+            className="rounded-xl border-slate-200 font-bold text-xs"
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${feedbacksQuery.isFetching ? "animate-spin text-indigo-600" : "text-slate-600"}`} />
+            Refresh Sheet
+          </Button>
         </div>
       </div>
 

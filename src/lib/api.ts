@@ -3948,45 +3948,91 @@ export function resetAllWorkerChallengesForWeek(userId: string): void {
 
 const STORAGE_FEEDBACK_KEY = "wt_worker_feedbacks_v1";
 
-const INITIAL_FEEDBACKS: WorkerFeedback[] = [
-  {
-    id: "fb-1",
-    user_id: "usr-1",
-    user_name: "Budi Santoso",
-    employee_number: "EMP-1001",
-    user_location: "Jakarta Central",
-    user_function: "Operations",
-    category: "saran",
-    rating: 5,
-    message: "Program Wellness Turbo sangat bermanfaat! Mohon diperbanyak materi Health Talk tentang pencegahan hipertensi di lapangan.",
-    status: "dibaca",
-    created_at: new Date(Date.now() - 86400000 * 2).toISOString(),
-  },
-  {
-    id: "fb-2",
-    user_id: "usr-2",
-    user_name: "Siti Rahmawati",
-    employee_number: "EMP-1002",
-    user_location: "Bandung Hub",
-    user_function: "Finance",
-    category: "apresiasi",
-    rating: 5,
-    message: "Terima kasih Tim Medical untuk tantangan challenge mingguan dan hadiah tumbler eksklusifnya! Sangat memotivasi.",
-    status: "baru",
-    created_at: new Date(Date.now() - 3600000 * 4).toISOString(),
-  },
-];
+const INITIAL_FEEDBACKS: WorkerFeedback[] = [];
 
 export function getStoredFeedbacks(): WorkerFeedback[] {
   try {
     const raw = localStorage.getItem(STORAGE_FEEDBACK_KEY);
     if (!raw) {
-      localStorage.setItem(STORAGE_FEEDBACK_KEY, JSON.stringify(INITIAL_FEEDBACKS));
-      return INITIAL_FEEDBACKS;
+      return [];
     }
-    return JSON.parse(raw);
+    const list = JSON.parse(raw);
+    return Array.isArray(list) ? list.filter((f: any) => !String(f.id || "").startsWith("fb-1") && !String(f.id || "").startsWith("fb-2")) : [];
   } catch {
-    return INITIAL_FEEDBACKS;
+    return [];
+  }
+}
+
+export async function fetchFeedbacksFromSpreadsheet(sheetUrl?: string): Promise<WorkerFeedback[]> {
+  const targetUrl = sheetUrl || getStoredSheetUrl() || "https://docs.google.com/spreadsheets/d/1oXQ8Y2fTiXTIeaJid00gmF3l75lg_2S1HCfAKB5TcMk/edit";
+  const sheetIdMatch = targetUrl.match(/\/d\/([a-zA-Z0-9-_]+)/);
+  const sheetId = sheetIdMatch ? sheetIdMatch[1] : "1oXQ8Y2fTiXTIeaJid00gmF3l75lg_2S1HCfAKB5TcMk";
+  const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent("FEEDBACK")}`;
+
+  try {
+    const res = await fetch(csvUrl);
+    if (!res.ok) return getStoredFeedbacks();
+    const text = await res.text();
+    if (!text || text.includes("Error:") || text.includes("Invalid query")) {
+      return getStoredFeedbacks();
+    }
+
+    const lines = parseCsv(text);
+    if (lines.length <= 1) return getStoredFeedbacks();
+
+    const headers = lines[0].map((h) => h.trim().toLowerCase());
+    const idIdx = headers.findIndex((h) => h === "id");
+    const waktuIdx = headers.findIndex((h) => h.includes("waktu") || h.includes("tanggal"));
+    const namaIdx = headers.findIndex((h) => h.includes("nama"));
+    const nopekIdx = headers.findIndex((h) => h.includes("nopek") || h.includes("pekerja"));
+    const lokasiIdx = headers.findIndex((h) => h.includes("lokasi"));
+    const fungsiIdx = headers.findIndex((h) => h.includes("fungsi") || h.includes("jabatan"));
+    const katIdx = headers.findIndex((h) => h.includes("kategori"));
+    const ratingIdx = headers.findIndex((h) => h.includes("rating") || h.includes("bintang"));
+    const pesanIdx = headers.findIndex((h) => h.includes("pesan") || h.includes("feedback") || h.includes("isi"));
+    const statusIdx = headers.findIndex((h) => h.includes("status"));
+
+    const items: WorkerFeedback[] = [];
+    for (let i = 1; i < lines.length; i++) {
+      const row = lines[i];
+      if (!row || row.length === 0 || !row.some((c) => c.length > 0)) continue;
+
+      const rawId = idIdx !== -1 && row[idIdx] ? row[idIdx] : `fb-${i}`;
+      const waktu = waktuIdx !== -1 && row[waktuIdx] ? row[waktuIdx] : new Date().toISOString();
+      const nama = namaIdx !== -1 && row[namaIdx] ? row[namaIdx] : "Pekerja";
+      const nopek = nopekIdx !== -1 && row[nopekIdx] ? row[nopekIdx] : undefined;
+      const lokasi = lokasiIdx !== -1 && row[lokasiIdx] ? row[lokasiIdx] : "-";
+      const fungsi = fungsiIdx !== -1 && row[fungsiIdx] ? row[fungsiIdx] : "-";
+      const kat = (katIdx !== -1 && row[katIdx] ? row[katIdx].toLowerCase().trim() : "saran") as any;
+      const rating = ratingIdx !== -1 && row[ratingIdx] ? parseInt(row[ratingIdx], 10) || 5 : 5;
+      const pesan = pesanIdx !== -1 && row[pesanIdx] ? row[pesanIdx] : "";
+      const rawStatus = statusIdx !== -1 && row[statusIdx] ? row[statusIdx].toLowerCase().trim() : "baru";
+      const status: FeedbackStatus = rawStatus.includes("dibaca") || rawStatus.includes("selesai") ? "dibaca" : "baru";
+
+      items.push({
+        id: rawId,
+        user_name: nama,
+        employee_number: nopek,
+        user_location: lokasi,
+        user_function: fungsi,
+        category: kat,
+        rating,
+        message: pesan,
+        status,
+        created_at: waktu,
+      });
+    }
+
+    const local = getStoredFeedbacks();
+    const combined = [...items];
+    for (const l of local) {
+      if (!combined.some((c) => c.id === l.id || (c.user_name === l.user_name && c.message === l.message))) {
+        combined.unshift(l);
+      }
+    }
+    return combined;
+  } catch {
+    return getStoredFeedbacks();
   }
 }
 
@@ -4015,6 +4061,36 @@ export function submitWorkerFeedback(input: {
 
   current.unshift(newFeedback);
   localStorage.setItem(STORAGE_FEEDBACK_KEY, JSON.stringify(current));
+
+  // Send to Google Spreadsheet Webhook
+  try {
+    const defaultWebhookUrl = "https://script.google.com/macros/s/AKfycbxvfwHwQmGXjgh0y_RizyMwjEQAlKm1OnjxcFfapTWPxDJhEHZKpTbJcI75p__4YAsKiA/exec";
+    const webhookUrl = getStoredWebhookUrl() || defaultWebhookUrl;
+    void fetch(webhookUrl, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({
+        action: "insert",
+        sheet: "FEEDBACK",
+        data: {
+          id: newFeedback.id,
+          "Waktu Kirim": newFeedback.created_at,
+          "Nama Pekerja": newFeedback.user_name,
+          "No. Pekerja (Nopek)": newFeedback.employee_number || "-",
+          "Lokasi": newFeedback.user_location,
+          "Fungsi/Jabatan": newFeedback.user_function,
+          "Kategori": newFeedback.category,
+          "Rating": newFeedback.rating,
+          "Pesan/Feedback": newFeedback.message,
+          "Status": newFeedback.status,
+        },
+      }),
+    });
+  } catch (err) {
+    console.error("Gagal kirim feedback ke spreadsheet webhook:", err);
+  }
+
   return newFeedback;
 }
 
@@ -4030,11 +4106,51 @@ export function updateFeedbackStatus(id: string, status: FeedbackStatus): Worker
 
   current[idx] = updated;
   localStorage.setItem(STORAGE_FEEDBACK_KEY, JSON.stringify(current));
+
+  // Sync update to Google Spreadsheet Webhook
+  try {
+    const defaultWebhookUrl = "https://script.google.com/macros/s/AKfycbxvfwHwQmGXjgh0y_RizyMwjEQAlKm1OnjxcFfapTWPxDJhEHZKpTbJcI75p__4YAsKiA/exec";
+    const webhookUrl = getStoredWebhookUrl() || defaultWebhookUrl;
+    void fetch(webhookUrl, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({
+        action: "upsert",
+        sheet: "FEEDBACK",
+        data: {
+          id: id,
+          Status: status,
+        },
+      }),
+    });
+  } catch (err) {
+    console.error("Gagal update status feedback ke spreadsheet:", err);
+  }
+
   return updated;
 }
 
 export function deleteWorkerFeedback(id: string): void {
   const current = getStoredFeedbacks().filter((f) => f.id !== id);
   localStorage.setItem(STORAGE_FEEDBACK_KEY, JSON.stringify(current));
+
+  // Sync delete to Google Spreadsheet Webhook
+  try {
+    const defaultWebhookUrl = "https://script.google.com/macros/s/AKfycbxvfwHwQmGXjgh0y_RizyMwjEQAlKm1OnjxcFfapTWPxDJhEHZKpTbJcI75p__4YAsKiA/exec";
+    const webhookUrl = getStoredWebhookUrl() || defaultWebhookUrl;
+    void fetch(webhookUrl, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({
+        action: "delete",
+        sheet: "FEEDBACK",
+        id: id,
+      }),
+    });
+  } catch (err) {
+    console.error("Gagal hapus feedback di spreadsheet:", err);
+  }
 }
 
