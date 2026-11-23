@@ -1,3 +1,4 @@
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   CheckCircle2,
@@ -7,6 +8,7 @@ import {
   MapPin,
   Plus,
   PlusCircle,
+  RefreshCw,
   Save,
   Search,
   Trash2,
@@ -50,6 +52,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   addNotification,
   deleteRewardItem,
+  fetchClaimsFromSpreadsheet,
   getStoredClaims,
   getStoredContactPerson,
   getStoredRewards,
@@ -97,12 +100,26 @@ function AdminRewardPage() {
     image_url: "",
   });
 
+  const claimsQuery = useQuery({
+    queryKey: ["admin_reward_claims"],
+    queryFn: () => fetchClaimsFromSpreadsheet(),
+  });
+
   useEffect(() => {
-    loadAllData();
+    setRewards(getStoredRewards());
+    setContact(getStoredContactPerson());
   }, []);
 
+  useEffect(() => {
+    if (claimsQuery.data) {
+      setClaims(claimsQuery.data);
+    } else {
+      setClaims(getStoredClaims());
+    }
+  }, [claimsQuery.data]);
+
   const loadAllData = () => {
-    setClaims(getStoredClaims());
+    claimsQuery.refetch();
     setRewards(getStoredRewards());
     setContact(getStoredContactPerson());
   };
@@ -111,6 +128,9 @@ function AdminRewardPage() {
   const handleStatusChange = (claimId: string, newStatus: RewardClaim["status"]) => {
     const updated = updateClaimStatus(claimId, newStatus);
     if (updated) {
+      setClaims((prev) =>
+        prev.map((c) => (c.id === claimId ? { ...c, status: newStatus } : c))
+      );
       if (newStatus === "sudah_diklaim") {
         addNotification({
           user_id: updated.user_id,
@@ -123,7 +143,6 @@ function AdminRewardPage() {
       } else {
         toast.success(`Status klaim ${updated.reward_title} oleh ${updated.user_name} dikembalikan menjadi ⏳ Diproses.`);
       }
-      loadAllData();
     }
   };
 
@@ -268,9 +287,19 @@ function AdminRewardPage() {
                 <div>
                   <CardTitle className="text-lg font-bold text-slate-900">Daftar Klaim Hadiah Pekerja</CardTitle>
                   <CardDescription className="text-xs text-slate-500 font-medium">
-                    Filter dan cari klaim pekerja berdasarkan Nama dan Lokasi untuk mengubah status menjadi Sudah Diklaim.
+                    Filter dan cari klaim pekerja dari sheet KLAIM REWARD untuk mengubah status menjadi Sudah Diklaim.
                   </CardDescription>
                 </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => claimsQuery.refetch()}
+                  disabled={claimsQuery.isFetching}
+                  className="rounded-xl border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold shrink-0"
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${claimsQuery.isFetching ? "animate-spin" : ""}`} />
+                  Refresh Sheet
+                </Button>
               </div>
 
               {/* Search & Filter Bar */}

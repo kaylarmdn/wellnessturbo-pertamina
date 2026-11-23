@@ -25,6 +25,7 @@ import { PaginationControl, usePagination } from "@/components/ui/pagination-con
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import {
   claimReward,
+  fetchClaimsFromSpreadsheet,
   fetchSpreadsheetLeaderboard,
   getStoredClaims,
   getStoredContactPerson,
@@ -79,23 +80,34 @@ function WorkerRewardPage() {
   // Logic Hadiah Konsistensi Daily: Kolom G (bulan1), Kolom H (bulan2), Kolom I (bulan3) HARUS masing-masing 20 Poin (Maksimal)
   const isKonsistensiDailyEligible = userBulan1 >= 20 && userBulan2 >= 20 && userBulan3 >= 20;
 
+  const claimsQuery = useQuery({
+    queryKey: ["user_reward_claims"],
+    queryFn: () => fetchClaimsFromSpreadsheet(),
+  });
+
+  useEffect(() => {
+    if (claimsQuery.data) {
+      setClaims(claimsQuery.data);
+    }
+  }, [claimsQuery.data]);
+
   useEffect(() => {
     loadData();
 
     // Sync claim updates in real-time between admin and worker views
     const handleStorage = () => loadData();
     window.addEventListener("storage", handleStorage);
-    const timer = setInterval(loadData, 2000);
 
     return () => {
       window.removeEventListener("storage", handleStorage);
-      clearInterval(timer);
     };
   }, []);
 
   const loadData = () => {
     setRewards(getStoredRewards());
-    setClaims(getStoredClaims());
+    if (!claimsQuery.data) {
+      setClaims(getStoredClaims());
+    }
     setContact(getStoredContactPerson());
   };
 

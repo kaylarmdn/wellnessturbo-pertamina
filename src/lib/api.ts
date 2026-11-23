@@ -3207,44 +3207,90 @@ export function deleteRewardItem(id: string): void {
   localStorage.setItem(STORAGE_REWARDS_KEY, JSON.stringify(current));
 }
 
-const INITIAL_CLAIMS: RewardClaim[] = [
-  {
-    id: "claim-sample-1",
-    reward_id: "rw-ms-12",
-    reward_title: "Milestone Achiever 12 Pts (Jersey)",
-    reward_category: "milestone",
-    user_id: "usr-1",
-    user_name: "Budi Santoso",
-    user_location: "Jakarta Central",
-    user_function: "Operations",
-    claimed_at: new Date(Date.now() - 86400000 * 2).toISOString(),
-    status: "sudah_diklaim",
-    processed_at: new Date(Date.now() - 86400000).toISOString(),
-  },
-  {
-    id: "claim-sample-2",
-    reward_id: "rw-2",
-    reward_title: "Botol Minum Tumbler Exclusive Wellness",
-    reward_category: "milestone",
-    user_id: "usr-1",
-    user_name: "Budi Santoso",
-    user_location: "Jakarta Central",
-    user_function: "Operations",
-    claimed_at: new Date(Date.now() - 3600000 * 5).toISOString(),
-    status: "diproses",
-  },
-];
+const INITIAL_CLAIMS: RewardClaim[] = [];
 
 export function getStoredClaims(): RewardClaim[] {
   try {
     const raw = localStorage.getItem(STORAGE_CLAIMS_KEY);
     if (!raw) {
-      localStorage.setItem(STORAGE_CLAIMS_KEY, JSON.stringify(INITIAL_CLAIMS));
-      return INITIAL_CLAIMS;
+      return [];
     }
-    return JSON.parse(raw);
+    const list = JSON.parse(raw);
+    // Filter out dummy claims if they linger in local storage
+    return Array.isArray(list) ? list.filter((c: any) => !String(c.id || "").startsWith("claim-sample-")) : [];
   } catch {
-    return INITIAL_CLAIMS;
+    return [];
+  }
+}
+
+export async function fetchClaimsFromSpreadsheet(sheetUrl?: string): Promise<RewardClaim[]> {
+  const targetUrl = sheetUrl || getStoredSheetUrl() || "https://docs.google.com/spreadsheets/d/1oXQ8Y2fTiXTIeaJid00gmF3l75lg_2S1HCfAKB5TcMk/edit";
+  const sheetIdMatch = targetUrl.match(/\/d\/([a-zA-Z0-9-_]+)/);
+  const sheetId = sheetIdMatch ? sheetIdMatch[1] : "1oXQ8Y2fTiXTIeaJid00gmF3l75lg_2S1HCfAKB5TcMk";
+  const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent("KLAIM REWARD")}`;
+
+  try {
+    const res = await fetch(csvUrl);
+    if (!res.ok) return getStoredClaims();
+    const text = await res.text();
+    if (!text || text.includes("Error:") || text.includes("Invalid query")) {
+      return getStoredClaims();
+    }
+
+    const lines = parseCsv(text);
+    if (lines.length <= 1) return getStoredClaims();
+
+    const headers = lines[0].map((h) => h.trim().toLowerCase());
+    const idIdx = headers.findIndex((h) => h === "id");
+    const waktuIdx = headers.findIndex((h) => h.includes("waktu") || h.includes("tanggal"));
+    const namaIdx = headers.findIndex((h) => h.includes("nama"));
+    const nopekIdx = headers.findIndex((h) => h.includes("nopek") || h.includes("pekerja"));
+    const lokasiIdx = headers.findIndex((h) => h.includes("lokasi"));
+    const rewardIdx = headers.findIndex((h) => h.includes("judul") || h.includes("reward") || h.includes("hadiah"));
+    const katIdx = headers.findIndex((h) => h.includes("kategori"));
+    const statusIdx = headers.findIndex((h) => h.includes("status"));
+
+    const claims: RewardClaim[] = [];
+    for (let i = 1; i < lines.length; i++) {
+      const row = lines[i];
+      if (!row || row.length === 0 || !row.some((c) => c.length > 0)) continue;
+
+      const rawId = idIdx !== -1 && row[idIdx] ? row[idIdx] : `claim-${i}`;
+      const waktu = waktuIdx !== -1 && row[waktuIdx] ? row[waktuIdx] : new Date().toISOString();
+      const nama = namaIdx !== -1 && row[namaIdx] ? row[namaIdx] : "Pekerja";
+      const nopek = nopekIdx !== -1 && row[nopekIdx] ? row[nopekIdx] : "-";
+      const lokasi = lokasiIdx !== -1 && row[lokasiIdx] ? row[lokasiIdx] : "-";
+      const judul = rewardIdx !== -1 && row[rewardIdx] ? row[rewardIdx] : "Hadiah";
+      const kat = (katIdx !== -1 && row[katIdx] ? row[katIdx] : "milestone") as any;
+      const rawStatus = statusIdx !== -1 && row[statusIdx] ? row[statusIdx].toLowerCase().trim() : "diproses";
+      const status: RewardClaim["status"] = rawStatus.includes("sudah") ? "sudah_diklaim" : "diproses";
+
+      claims.push({
+        id: rawId,
+        reward_id: `rw-${i}`,
+        reward_title: judul,
+        reward_category: kat,
+        user_id: nopek,
+        user_name: nama,
+        user_location: lokasi,
+        user_function: "-",
+        claimed_at: waktu,
+        status,
+        processed_at: status === "sudah_diklaim" ? waktu : undefined,
+      });
+    }
+
+    // Combine with local claims and cache
+    const local = getStoredClaims();
+    const combined = [...claims];
+    for (const l of local) {
+      if (!combined.some((c) => c.id === l.id || (c.user_name === l.user_name && c.reward_title === l.reward_title))) {
+        combined.unshift(l);
+      }
+    }
+    return combined;
+  } catch {
+    return getStoredClaims();
   }
 }
 
@@ -3281,43 +3327,32 @@ export function claimReward(
   claims.unshift(newClaim);
   localStorage.setItem(STORAGE_CLAIMS_KEY, JSON.stringify(claims));
 
-  // 1. Dual-Entry: Sync to Supabase reward_claims table
+  // Post to Google Spreadsheet Webhook
   try {
-    void supabase.from("reward_claims").upsert({
-      id: newClaim.id,
-      reward_id: newClaim.reward_id,
-      user_id: newClaim.user_id,
-      user_name: newClaim.user_name,
-      user_location: newClaim.user_location,
-      user_function: newClaim.user_function,
-      reward_title: newClaim.reward_title,
-      reward_category: newClaim.reward_category,
-      status: newClaim.status,
-      claimed_at: newClaim.claimed_at,
-    } as never);
-  } catch {}
-
-  // 2. Dual-Entry: Post to Google Spreadsheet Webhook
-  try {
-    const webhookUrl = getStoredWebhookUrl() || "https://script.google.com/macros/s/AKfycbxvfwHwQmGXjgh0y_RizyMwjEQAlKm1OnjxcFfapTWPxDJhEHZKpTbJcl75p__/exec";
+    const defaultWebhookUrl = "https://script.google.com/macros/s/AKfycbxvfwHwQmGXjgh0y_RizyMwjEQAlKm1OnjxcFfapTWPxDJhEHZKpTbJcI75p__4YAsKiA/exec";
+    const webhookUrl = getStoredWebhookUrl() || defaultWebhookUrl;
     void fetch(webhookUrl, {
       method: "POST",
       mode: "no-cors",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "text/plain" },
       body: JSON.stringify({
         action: "insert",
         sheet: "KLAIM REWARD",
         data: {
+          id: newClaim.id,
           "Waktu Klaim": newClaim.claimed_at,
           "Nama Pekerja": newClaim.user_name,
-          "No Pekerja": newClaim.user_id,
+          "No. Pekerja (Nopek)": newClaim.user_id,
+          "Lokasi": newClaim.user_location,
           "Judul Reward": newClaim.reward_title,
           "Kategori": newClaim.reward_category,
           "Status": newClaim.status,
         },
       }),
     });
-  } catch {}
+  } catch (err) {
+    console.error("Gagal kirim klaim ke webhook spreadsheet:", err);
+  }
 
   return newClaim;
 }
@@ -3325,19 +3360,54 @@ export function claimReward(
 export function updateClaimStatus(claimId: string, status: RewardClaim["status"]): RewardClaim | null {
   const claims = getStoredClaims();
   const idx = claims.findIndex((c) => c.id === claimId);
-  if (idx === -1) return null;
+  const target = idx !== -1 ? claims[idx] : null;
 
-  const target = claims[idx];
-  if (!target) return null;
-
-  const updatedClaim: RewardClaim = {
+  const updatedClaim: RewardClaim = target ? {
     ...target,
+    status: status,
+    processed_at: status === "sudah_diklaim" ? new Date().toISOString() : null,
+  } : {
+    id: claimId,
+    reward_id: "rw-updated",
+    reward_title: "Reward",
+    reward_category: "milestone",
+    user_id: "-",
+    user_name: "Pekerja",
+    user_location: "-",
+    user_function: "-",
+    claimed_at: new Date().toISOString(),
     status: status,
     processed_at: status === "sudah_diklaim" ? new Date().toISOString() : null,
   };
 
-  claims[idx] = updatedClaim;
+  if (idx !== -1) {
+    claims[idx] = updatedClaim;
+  } else {
+    claims.unshift(updatedClaim);
+  }
   localStorage.setItem(STORAGE_CLAIMS_KEY, JSON.stringify(claims));
+
+  // Sync update to Google Spreadsheet Webhook
+  try {
+    const defaultWebhookUrl = "https://script.google.com/macros/s/AKfycbxvfwHwQmGXjgh0y_RizyMwjEQAlKm1OnjxcFfapTWPxDJhEHZKpTbJcI75p__4YAsKiA/exec";
+    const webhookUrl = getStoredWebhookUrl() || defaultWebhookUrl;
+    void fetch(webhookUrl, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({
+        action: "upsert",
+        sheet: "KLAIM REWARD",
+        data: {
+          id: claimId,
+          Status: status,
+        },
+      }),
+    });
+  } catch (err) {
+    console.error("Gagal update status klaim ke spreadsheet:", err);
+  }
+
   return updatedClaim;
 }
 
